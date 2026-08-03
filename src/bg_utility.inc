@@ -1,0 +1,3 @@
+; subroutines
+
+.global bgSetup

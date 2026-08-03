@@ -1,0 +1,5 @@
+;
+;
+;
+
+.global Dungeon_Load
