@@ -31,6 +31,10 @@ Title_Load:
 	lda #$20
 	jsr bgSetup
 	
+; Turn ON sprites 
+	lda #%00010000
+	sta SpritesOn
+
 	;
 	; TODO
 	; draw title tiles
@@ -48,23 +52,46 @@ Title_Load:
 	
 
 Title_Frame:
-	; first check for start
+; Scroll if necessitated (and delay dungeon start)
+	lda NeedScroll
+	beq @DoFrame
+	lda ScrollY
+	clc
+	adc #$02
+	sta ScrollY
+; Have we rolled down to NT2?
+	cmp #$EF
+	bcc @StillScrolling
+; Set scroll to 0 and take me to the DUNGEON
+	lda #0
+	sta ScrollY
+	lda #2
+	sta ScrollNt
+	lda #0
+	sta NeedScroll
+	lda #MODE_DUNGEON
+	sta PrgmMode
+	lda #1
+	sta PrgmMode_update
+	lda #120
+	sta CursorX
+@StillScrolling:
+	jmp @NoTimer
+@DoFrame:
+	; check buttons
 	lda Buttons
 	and #PAD_START
 	beq @HandleSelect
 	lda TitleMenuIndex
 	cmp #TITLE_START
 	bne @NotDungeon
-	lda #120
-	sta CursorX
-	lda #MODE_DUNGEON
-	sta PrgmMode
+; We dungeon, queue scroll for next frames 
 	lda #1
-	sta PrgmMode_update
+	sta NeedScroll
 	jmp @NoTimer ; we done, jump 
-	@NotDungeon:
+@NotDungeon:
 	; TODO: handle other sub title states, eventually
-	@HandleSelect:
+@HandleSelect:
 	lda ButtonsTimer
 	; if timer is nonzero we wait
 	bne @HandleSelectTimer
@@ -78,27 +105,19 @@ Title_Frame:
 	beq @Wraparound
 	inc TitleMenuIndex
 	jmp @SetTimer
-	@Wraparound:
+@Wraparound:
 	lda #TITLE_START
 	sta TitleMenuIndex
-	@SetTimer:
+@SetTimer:
 	lda #30
 	sta ButtonsTimer
-	@HandleSelectTimer:
+@HandleSelectTimer:
 	lda ButtonsTimer
 	beq @NoTimer
 	dec ButtonsTimer
-	@NoTimer:
-	; bueines as usual.
-	
-	; basic functionality of title screen now implemented
-	; TODO:
-	; visuals in Title_Load
-	; move fairy based on index
-	; (will eventually have to do bresenham for that... teleport will suffice)
-
+@NoTimer:
+	; bueines as usual.	
 	jsr ppu_update
-	
 	jmp mainloop
 
 	

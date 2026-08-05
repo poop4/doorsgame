@@ -5,6 +5,9 @@
 .global nmi_status
 .global nmt_updateRAM
 .global nmt_update_len
+.globalzp ScrollY
+.globalzp ScrollNt
+.globalzp SpritesOn
 .global poop
 .global oam_used
 .global oam

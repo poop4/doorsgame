@@ -12,6 +12,9 @@ nmi_lock:		.res 1 ; prevents nmi re-entry
 nmi_count:		.res 1 ; simple counter
 nmi_status:		.res 1 ; 1 to push nmi, 2 to disable rendering on next
 nmt_update_len:	.res 1 ; bytes in nmt_update
+ScrollY:		.res 1
+ScrollNt:		.res 1
+SpritesOn:		.res 1 ; whether to enable sprite rendering this frame
 poop:			.res 1 ; temporary variable
 
 .segment "BSS"
@@ -33,7 +36,7 @@ nmi:
 	; prevent reentry. 
 	lda nmi_lock
 	beq :+ ;if lock > 1
-		jmp @nmi_end
+	jmp @nmi_end
 	:
 	; ok we good
 	lda #1
@@ -42,15 +45,15 @@ nmi:
 	; adjust next behavior based on status
 	lda nmi_status 
 	bne :+ ;if status == 0
-		jmp @nmi_end
+	jmp @nmi_end
 	:
 	cmp #2
 	bne :+ ; status == 2 turns off rendering 
-		lda #%00000000
-		sta PPUMASK
-		ldx #0
-		stx nmi_status
-		jmp @nmi_end
+	lda #%00000000
+	sta PPUMASK
+	ldx #0
+	stx nmi_status
+	jmp @nmi_end
 	:
 	; oam dma
 	lda #$00
@@ -69,41 +72,43 @@ nmi:
 	lda #$00
 	sta PPUADDR
 	ldx #0
-	:
-		lda paletteRAM, x
-		sta PPUDATA
-		inx
-		cpx #32
-		bne :-
+:
+	lda paletteRAM, x
+	sta PPUDATA
+	inx
+	cpx #32
+	bne :-
 	; upd nmt
 	ldx #0
 	cpx nmt_update_len
 	bcs @scroll ;if no new tiles, skip to next
-	@nmt_update_loop:
-		lda nmt_updateRAM, x
-		sta PPUADDR
-		inx 
-		lda nmt_updateRAM, x
-		sta PPUADDR 
-		inx
-		lda nmt_updateRAM, x
-		sta PPUDATA
-		inx
-		cpx nmt_update_len
-		bcc @nmt_update_loop
+@nmt_update_loop:
+	lda nmt_updateRAM, x
+	sta PPUADDR
+	inx 
+	lda nmt_updateRAM, x
+	sta PPUADDR 
+	inx
+	lda nmt_updateRAM, x
+	sta PPUDATA
+	inx
+	cpx nmt_update_len
+	bcc @nmt_update_loop
 	lda #0
 	sta nmt_update_len ; done updating reset buffer
 @scroll:
 	lda #%10010000
+	ora ScrollNt
 	sta PPUCTRL ; nametable
 	lda PPUSTATUS
 	; fix scroll position
-	lda #0
+	lda #00
 	sta PPUSCROLL
-	lda #0
+	lda ScrollY	
 	sta PPUSCROLL
-	; enable rendering 
-	lda #%00011110
+	; enable rendering (with sprites potentially off)
+	lda #%00001110
+	ora SpritesOn
 	sta PPUMASK
 	; flag ppu update complete
 	lda #0

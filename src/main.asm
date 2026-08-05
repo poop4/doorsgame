@@ -23,6 +23,7 @@ TmpPtr:			.res 2
 PrgmTimer:		.res 1 ; simple frame tracker
 ButtonsTimer:	.res 1 ; number of frames until input is accepted (may need mroe of these)
 DoorsTimer:		.res 1 ; number of frames until we transition rooms or die
+NeedScroll:		.res 1
 
 
 .segment "CODE"

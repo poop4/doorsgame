@@ -276,3 +276,9 @@
 ; and then did like
 ; a dozen more iterations
 ; and miraculously actually landed on something pretty good
+
+; 8/4
+; ok implemented basic scroll behavior yippee!
+; still gotta fix a bug relating to first level behavior but
+; for the most part it works yay!!! 
+; the nametable selection stuff is super jank but it'll work for my purposes

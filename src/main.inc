@@ -28,6 +28,8 @@ BOTTOM =	$03
 .globalzp PrgmTimer
 .globalzp ButtonsTimer
 .globalzp DoorsTimer
+.globalzp ScrollNt
+.globalzp NeedScroll
 
 ;
 ; subroutines

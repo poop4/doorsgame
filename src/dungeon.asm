@@ -29,11 +29,19 @@ Dungeon_Load:
 	inx
 	cpx #32
 	bne :-
-	; clear nt (0 for now, 3 later since we want to eventually scroll to the next room)
-	lda #$20
+; clear next nt
+	lda ScrollNt
+	asl
+	asl
+	clc
+	adc #$20
 	jsr bgSetup
 	; draw walls
-	lda #$20
+	lda ScrollNt
+	asl
+	asl
+	clc
+	adc #$20
 	sta PPUADDR
 	lda #$00
 	sta PPUADDR
@@ -51,7 +59,11 @@ Dungeon_Load:
 	bne :-
 	; Set attr
 	lda PPUSTATUS
-	lda #$23
+	lda ScrollNt
+	asl
+	asl
+	clc
+	adc #$23
 	sta PPUADDR
 	lda #$C9
 	sta PPUADDR
@@ -66,7 +78,11 @@ Dungeon_Load:
 	cpx #3
 	bne :-
 	lda PPUSTATUS
-	lda #$23
+	lda ScrollNt
+	asl
+	asl
+	clc
+	adc #$23
 	sta PPUADDR
 	lda #$D1
 	sta PPUADDR
@@ -102,10 +118,28 @@ Dungeon_Load:
 	jmp (PrgmFramePtr)
 
 
-Dungeon_Frame:
-; TODO RIGHT NOW!!!
-; scroll shit
-
+Dungeon_Frame: 
+	lda NeedScroll
+	beq @DoFrame
+		; We scroll
+; Increment scroll pos
+	lda ScrollY
+	sec
+	sbc #$03
+	sta ScrollY
+		; If rollover, finish up scroll
+	bcc @DoneScrolling
+		; No rollover, keep going
+	jmp @End
+@DoneScrolling:
+; Turn on sprites
+	lda #%00010000
+	sta SpritesOn
+; Reset scroll stuff
+	lda #0
+	sta ScrollY
+	sta NeedScroll
+@DoFrame:
 ; Fairy stuff
 	jsr FairyBoundsCheck
 	jsr FairyMove_Player
@@ -131,10 +165,22 @@ Dungeon_Frame:
 	dec DoorsTimer
 	bne @NoNextRoom
 ; Room transition.
+; Queue scroll
+	lda #$EF
+	sta ScrollY
+	lda ScrollNt
+	eor #2
+	sta ScrollNt
+	lda #1
+	sta NeedScroll
+	; Turn OFF sprites
+	lda #%00000000
+	sta SpritesOn
 	jmp Dungeon_Load
 @NoNextRoom:
 ; Spr graphix 
 	jsr FairyDraw
+@End:
 	jsr ppu_update
 	jmp mainloop
 	

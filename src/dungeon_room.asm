@@ -56,7 +56,6 @@ ScreenY := Scratch+1
 .endproc
 
 
-
 ; Room object initialization routine
 ; DO NOT USE WITH RENDERING ON
 ; Parameters: A = object ID, |  X, Y = tile coordinate offsets
@@ -129,6 +128,12 @@ TilesRow := Scratch+3
 	ror
 	sta ScreenY
 	ldx ScreenX
+	ldy ScrollNt ; adjust for NT
+	beq :+
+	clc
+	adc #64
+	sta ScreenY
+:
 	ldy ScreenY
 	jsr ppu_address_tile
 	; now ready for PPUDATA writes
@@ -239,12 +244,16 @@ TmpX := Scratch+5
 	ror
 	ror
 	ror
+	ldx ScrollNt
+	beq :+
+	clc
+	adc #64
+:
 	tay
 	clc
 	adc #$07
 	sta RowEndY
 ; Loop initialization
-; We need to dual-use X this loop so shit gets messy
 	ldx #00
 @OpenDoorTilesLoop:
 	lda table_OpenDoorTiles, X
