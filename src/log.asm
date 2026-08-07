@@ -282,3 +282,32 @@
 ; still gotta fix a bug relating to first level behavior but
 ; for the most part it works yay!!! 
 ; the nametable selection stuff is super jank but it'll work for my purposes
+
+; 8/5 
+; fixed that bug, also unjanked the code 
+; literally no reason for nttoggle to exist. new version is much cleaner
+; very proud of the asl asl before ppuaddr writes that was clever 
+; yesterday i felt like i kinda didn't understand what i was doing and now i'm
+; much more confident and feel good about the code. but enough about that
+; now the dungeon is basically functional
+; --
+; ok next bit: generate tiles based on dungeon id
+; was puzzling over this for a bit but johnybot in nesdev server helped out a ton
+; for now i'll implement it as such:
+; each bit in the rng sequence beginning at the current seed determines whether 
+; a wall or floor tile is placed in that position
+; or something like that
+; anyways this idea is really cute and fun to me
+; the idea of each room's layout being its 'fingerprint' in relation to the full
+; seed... haah... it's kinda romantic to me...
+
+; 8/6
+; spent an hour writing a DrawVerticalStripe subroutine
+; most of this time was spent trying to circumvent making it a subroutine
+; why am i like this
+; its chill though hopefully i've learned my lesson. subroutines are great
+; -- 
+; partially related: spent half an hour this morning writing a complex loop that
+; ultimately copied one byte to another byte. re: why am i like this
+; anyways writing the decorative tile code now
+; 

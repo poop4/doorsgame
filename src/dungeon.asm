@@ -36,27 +36,61 @@ Dungeon_Load:
 	clc
 	adc #$20
 	jsr bgSetup
-	; draw walls
+	
+; Side walls
+	lda #$FE
+	ldy #$00
+	jsr bgDrawStripeY
+	lda #$51
+	iny
+	jsr bgDrawStripeY
+	lda #$52
+	ldy #$1E
+	jsr bgDrawStripeY
+	lda #$FE
+	iny
+	jsr bgDrawStripeY
+; Top wall
+	lda #$FE
+	ldy #$00
+	jsr bgDrawStripeX
+	lda #$50
+	ldy #$01
+	jsr bgDrawStripeX
+; cleanup! (note to self: never read this code again please)
+	jmp :++++
+	ldx #$20
+:
 	lda ScrollNt
 	asl
 	asl
 	clc
 	adc #$20
 	sta PPUADDR
-	lda #$00
-	sta PPUADDR
-	ldy #0
-	ldx #0
-	lda #TILE_WALLS
-:
+	stx PPUADDR
+	cpx #$3E
+	beq :+
+	lda #$FE
 	sta PPUDATA
-	inx
-	cpx #32
-	bne :-
-	ldx #0
-	iny
-	cpy #10
-	bne :-
+	lda #$53
+	sta PPUDATA
+	jmp :++
+:
+	lda #$54
+	sta PPUDATA
+	lda #$FE
+	sta PPUDATA
+:
+	cpx #$3E
+	beq :+
+	txa
+	clc
+	adc #$1E
+	tax
+	jmp :---
+:
+	
+
 	; Set attr
 	lda PPUSTATUS
 	lda ScrollNt
@@ -91,7 +125,7 @@ Dungeon_Load:
 	cpy #2
 	bne :-
 ; Fairy initialize
-	lda #192
+	lda #200
 	sta CursorY
 	lda #FAIRY_NORMAL
 	sta CursorState
@@ -125,7 +159,7 @@ Dungeon_Frame:
 ; Increment scroll pos
 	lda ScrollY
 	sec
-	sbc #$03
+	sbc #$02
 	sta ScrollY
 		; If rollover, finish up scroll
 	bcc @DoneScrolling

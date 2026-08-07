@@ -3,7 +3,10 @@
 ; Currently: bgSetup
 ;
 
+.smart
+.debuginfo+
 .include "system.inc"
+.include "main.inc"
 .include "bg_utility.inc"
 
 ; generic utility for zeroing nametable rams
@@ -32,4 +35,57 @@ bgSetup:
 		sta $2007
 		dex
 		bne :-
+	rts
+
+
+; a: tileID
+; y: xpos
+bgDrawStripeY:
+	pha
+	lda #%10010100
+	sta PPUCTRL
+	lda PPUSTATUS
+	lda ScrollNt
+	asl
+	asl
+	clc
+	adc #$20
+	sta PPUADDR
+	sty PPUADDR
+	pla 
+	ldx #0
+@Draw:
+	sta PPUDATA
+	inx
+	cpx #30
+	bne @Draw
+	lda #%10010000
+	sta PPUCTRL
+	rts
+
+; a: tileID
+; y: ypos	
+	bgDrawStripeX:
+	pha
+	lda PPUSTATUS
+	lda ScrollNt
+	asl
+	asl
+	clc
+	adc #$20
+	sta PPUADDR
+	tya
+	asl
+	asl
+	asl
+	asl
+	asl
+	sta PPUADDR
+	pla 
+	ldx #0
+@Draw:
+	sta PPUDATA
+	inx
+	cpx #32
+	bne @Draw
 	rts

@@ -29,7 +29,7 @@ NeedScroll:		.res 1
 .segment "CODE"
 main:
 	; TEST initialize seed
-	lda #1
+	lda #%11000011
 	sta Seed 
 	; set up to initialize title 
 	lda #MODE_TITLE

@@ -5,16 +5,15 @@
 .include "rng.inc"
 
 .segment "ZEROPAGE"
-Seed:		.res 1
+Seed:	.res 1
 Range:	.res 1
 
 ; thank you bradsmith for showing how to implement galois
 
-; clocks seed 8 times to generate a new 8bit value
+; clocks seed (A) 8 times to generate a new 8bit value
 .segment "CODE"
 ClockRNG:
 	ldy #8
-	lda Seed
 :
 	asl
 	bcc :+
@@ -22,7 +21,6 @@ ClockRNG:
 :
 	dey
 	bne :--
-	sta Seed
 	rts
 	
 ; range check, returns an effectively random number out of X range

@@ -10,7 +10,8 @@
 .include "rng.inc"
 
 .segment "ZEROPAGE"
-; Room data
+; local RNG for current room
+RoomSeed: .res 1
 
 .segment "BSS"
 ; list of indexes, used as offsets and to signify object IDs
@@ -27,9 +28,12 @@ RoomObjStates:	.res 16
 .proc GenerateRoom
 ScreenX := Scratch+0
 ScreenY := Scratch+1
-	; TODO
-	; this later
-; at least initialize room objects 
+NtHi := Scratch+2
+NtLo := Scratch+3
+RandomBits := Scratch+4
+ToggleFloor := Scratch+5
+
+; Initialize room obj 
 	ldx #0
 @ClearRoomLoop:
 	lda #$FF 
@@ -37,6 +41,93 @@ ScreenY := Scratch+1
 	inx
 	cpx #$10
 	bne @ClearRoomLoop
+		
+; Draw decorative tiles
+; Transfer global seed to this room
+	lda Seed
+	sta RoomSeed
+; Initialize nt pointers (and toggle), start outer loop
+	lda #$20
+	sta NtHi
+	lda #$42
+	sta NtLo
+	lda #0
+	sta ToggleFloor
+@RowLoop:
+; Loop termination?
+	lda NtHi
+	cmp #$23
+	bne @InitializeRow
+	lda NtLo
+	cmp #$A2 ; $20 more'n last row
+	bne @InitializeRow
+	jmp @DoneDrawingDungeon
+@InitializeRow:
+	ldx #0
+	lda PPUSTATUS
+	lda ScrollNt
+	asl
+	asl
+	clc
+	adc NtHi
+	sta PPUADDR
+	lda NtLo
+	sta PPUADDR
+; Increment address(es)
+	lda NtLo
+	clc
+	adc #$20
+	sta NtLo
+	bcc :+
+	inc NtHi
+:
+; Real quick, check if we should be drawing floor
+	lda NtHi
+	cmp #$21
+	bne @DrawRow
+	lda NtLo
+	cmp #$62
+	bne @DrawRow
+	inc ToggleFloor
+@DrawRow:
+; Copy seed over for reading
+	lda RoomSeed
+	sta RandomBits
+; (Clock for next iteration)
+	lda RoomSeed
+	jsr ClockRNG ; re: check your clobbers
+	sta RoomSeed
+	ldy #0
+@ReadBits:
+	lda RandomBits
+	and #%11000000
+	cmp #%11000000
+	beq :+
+	lda #$FE
+	clc
+	adc ToggleFloor
+	jmp @DrawByte
+:
+	lda #$4E
+	clc
+	adc ToggleFloor
+@DrawByte:
+	sta PPUDATA
+	lda RandomBits
+	asl
+	asl
+	sta RandomBits
+	iny
+	cpy #4
+	bne @ReadBits
+	inx
+	cpx #7
+	bne @DrawRow
+	jmp @RowLoop
+@DoneDrawingDungeon:
+	
+	
+
 ; Create door objects
 	lda #OBJ_DOOR
 	ldx #6
@@ -50,8 +141,12 @@ ScreenY := Scratch+1
 	ldx #22
 	ldy #4
 	jsr CreateRoomObject
-
 	
+	
+; Last but not least, clock rng
+	lda Seed
+	jsr ClockRNG
+	sta Seed
 	rts
 .endproc
 
@@ -251,7 +346,7 @@ TmpX := Scratch+5
 :
 	tay
 	clc
-	adc #$07
+	adc #$08
 	sta RowEndY
 ; Loop initialization
 	ldx #00
@@ -287,6 +382,7 @@ table_OpenDoorTiles:
 .byte $46,$47,$48,$3F
 .byte $49,$4A,$45,$3F
 .byte $4B,$4C,$4D,$FF
+.byte $FF,$FF,$FF,$FF
 
 RoomObjBehavior_Stone:
 
