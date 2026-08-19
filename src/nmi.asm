@@ -15,12 +15,12 @@ nmt_update_len:	.res 1 ; bytes in nmt_update
 ScrollY:		.res 1
 ScrollNt:		.res 1
 SpritesOn:		.res 1 ; whether to enable sprite rendering this frame
+oam_index:	.res 1	 ; oam curr index
 poop:			.res 1 ; temporary variable
 
 .segment "BSS"
 nmt_updateRAM: .res 256 ; nametable buffer
 paletteRAM:	.res 32  ; palette buffaire
-oam_used:	.res 1	 ; oam curr index
 
 .segment "OAM"
 oam: .res 256		 ; dma me baby
@@ -62,7 +62,7 @@ nmi:
 	sta OAMDMA
 	; initialize oam list
 	lda #$00
-	sta oam_used
+	sta oam_index
 	; palettes
 	lda #%10010000
 	sta PPUCTRL

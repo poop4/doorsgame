@@ -1,0 +1,5 @@
+;
+;
+
+.global CreateDogs
+.global HandleDogsEvents

@@ -7,9 +7,9 @@
 .global nmt_update_len
 .globalzp ScrollY
 .globalzp ScrollNt
+.globalzp oam_index
 .globalzp SpritesOn
 .global poop
-.global oam_used
 .global oam
 .global paletteRAM
 

@@ -13,8 +13,8 @@ FAIRY_STOPPED =	$01
 .globalzp CursorBoundsBox
 
 ; subroutines
-.global FairyLoad
-.global FairyDraw
+.global CreateFairy
+.global DrawFairy
 .global FairyBoundsCheck
 .global FairyMove_Player
 .global FairyCheckInteract

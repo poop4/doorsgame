@@ -310,4 +310,21 @@
 ; partially related: spent half an hour this morning writing a complex loop that
 ; ultimately copied one byte to another byte. re: why am i like this
 ; anyways writing the decorative tile code now
-; 
+
+; 8/10
+; on 8/7 i finished that tile pattern code
+; i spent this weekend figuring out a solid design for room generation algorithm
+
+; 8/11
+; ok gotta rewrite the sprite drawing system what i have now is not fucking working
+; well it works but its messy as hell and i dont like IT
+; kinda already know what im gonna do to fix it up so i'm just gonna try thaT
+
+; 8/18
+; that was a pretty tough week but i finally got dogs up and running!
+; oh yeah i fixed the sprite system too now it's double buffered
+; anyways next steps
+; make score system and room counter!
+; then finish up dogs, random generation, opening doors, retreating 
+; & game over handling
+

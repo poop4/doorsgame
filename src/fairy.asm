@@ -21,15 +21,30 @@ CursorState:		.res 1
 CursorAnimToggle:	.res 1
 CursorBoundsBox:	.res 4 ; Left, top, right, bottom
 
+.segment "BSS"
+CursorCells:		.res 16
+
+
 .segment "CODE"
+
+CreateFairy:
+; Fairy initialize
+	lda #200
+	sta CursorY
+	lda #FAIRY_NORMAL
+	sta CursorState
+	
+	rts
+
+
 
 ; Animate the fairy via a toggle every X frames
 ; TODO Add a table for left + right movement and include cases
 ; TODO Update this later to include Interaction state sprite
 ; or maybe kirby star thing 
-FairyDraw:
+DrawFairy:
 	lda PrgmTimer
-	and #%00000010
+	and #%00000100
 	beq @Frame0
 	lda #1
 	sta CursorAnimToggle
@@ -39,7 +54,7 @@ FairyDraw:
 	sta CursorAnimToggle
 @Frame1:
 	ldx #0
-	ldy oam_used
+	ldy oam_index
 @Draw:
 ; Store Ypos
 	lda CursorY
@@ -70,10 +85,10 @@ FairyDraw:
 	cpx #$10
 	bne @Draw
 ; Update oam counter
-	lda oam_used
+	lda oam_index
 	clc
 	adc #$10
-	sta oam_used
+	sta oam_index
 	rts
 
 table_FairySp:

@@ -1,13 +1,65 @@
 ;
-; Generic background draw utilities.
-; Currently: bgSetup
+; Generic background and sprite draw utilities
 ;
 
 .smart
 .debuginfo+
+.include "ppu_utility.inc"
 .include "system.inc"
 .include "main.inc"
-.include "bg_utility.inc"
+.include "nmi.inc"
+
+; Sprite object constructor
+.segment "ZEROPAGE"
+CellsIndex:		.res 1
+
+.segment "BSS"
+CellsList:		.res 16
+
+.segment "CODE"
+; stores objects in cell list to oam and updates index
+.proc UpdateCells
+CellsPtr := TmpPtr
+
+	lda #0
+	sta CellsIndex
+	sta CellsPtr
+	sta CellsPtr+1
+	
+@LoadNextCells:
+; Initialize CellsPtr to next slot
+; End the subroutine when we hit an empty slot
+	lda CellsIndex
+	asl
+	tax
+	lda CellsList, X
+	sta CellsPtr
+	lda CellsList+1, X
+	beq @CellsNoMore
+	sta CellsPtr+1
+
+	ldx oam_index
+	ldy #0
+@UpdateOAM:
+	lda (CellsPtr), Y
+	cmp #$FF
+	beq @CellsComplete
+	sta oam, X
+	iny
+	inx
+	jmp @UpdateOAM
+	
+@CellsComplete:
+	txa
+	clc
+	adc oam_index
+	sta oam_index
+	inc CellsIndex
+	jmp @LoadNextCells
+	
+@CellsNoMore:
+	rts
+.endproc
 
 ; generic utility for zeroing nametable rams
 ; a: namtable id ($20 or $28)

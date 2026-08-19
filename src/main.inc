@@ -22,6 +22,7 @@ BOTTOM =	$03
 
 .globalzp Scratch
 .globalzp TmpPtr
+.globalzp TmpPtr2
 .globalzp PrgmMode
 .globalzp PrgmMode_update
 .globalzp PrgmFramePtr

@@ -20,6 +20,7 @@ PrgmMode:		.res 1
 PrgmFramePtr:	.res 2 ; Address to current frame routine
 PrgmMode_update:	.res 1
 TmpPtr:			.res 2
+TmpPtr2:		.res 2
 PrgmTimer:		.res 1 ; simple frame tracker
 ButtonsTimer:	.res 1 ; number of frames until input is accepted (may need mroe of these)
 DoorsTimer:		.res 1 ; number of frames until we transition rooms or die
@@ -28,11 +29,11 @@ NeedScroll:		.res 1
 
 .segment "CODE"
 main:
-	; TEST initialize seed
-	lda #%11000011
-	sta Seed 
+	; 'Initialize' seed
+	lda #1
+	sta Seed
 	; set up to initialize title 
-	lda #MODE_TITLE
+	lda #MODE_DUNGEON
 	sta PrgmMode
 	lda #1
 	sta PrgmMode_update ; set update flag

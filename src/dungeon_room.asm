@@ -8,13 +8,14 @@
 .include "main.inc"
 .include "nmi.inc"
 .include "rng.inc"
+.include "monsters.inc"
 
 .segment "ZEROPAGE"
 ; local RNG for current room
-RoomSeed: .res 1
+RoomSeed: 		.res 1
 
 .segment "BSS"
-; list of indexes, used as offsets and to signify object IDs
+; list of indices, used as offsets and to signify object IDs
 RoomObjects: 	.res 16
 ; 4 bytes each, holds collision info for room objects
 RoomObjBoxes_Left:		.res 16
@@ -23,6 +24,7 @@ RoomObjBoxes_Right:		.res 16
 RoomObjBoxes_Bottom:	.res 16
 ; default 0, modified on interaction
 RoomObjStates:	.res 16
+
 
 .segment "CODE"
 .proc GenerateRoom
@@ -142,6 +144,9 @@ ToggleFloor := Scratch+5
 	ldy #4
 	jsr CreateRoomObject
 	
+	
+; Create doggies
+	jsr CreateDogs
 	
 ; Last but not least, clock rng
 	lda Seed
@@ -287,15 +292,21 @@ table_RoomObjBoxes:
 .byte 00 ; TOP
 .byte 32 ; RIGHT
 .byte 48 ; BOTTOM
-; ID 1, etc...
+; ID 1, Duerer title
 .byte 00
 .byte 00
+.byte 96
 .byte 16
-.byte 16
+; ID 2, P.o.E.D.R.
+.byte 00
+.byte 00
+.byte 224
+.byte 8
 
 table_RoomObjTiles:
 .word table_DoorTiles
-.word table_StoneTiles
+.word table_DuererTiles
+.word table_SubtitleTiles
 ; ID 0, doors 
 table_DoorTiles:
 .byte $24,$25,$25,$26
@@ -303,17 +314,21 @@ table_DoorTiles:
 .byte $2B,$2C,$2D,$2A
 .byte $2E,$2F,$30,$31
 .byte $32,$33,$34,$2A
-.byte $35,$36,$37,$2A,$FF
-; ID 1, etc...
-table_StoneTiles:
-.byte $00,$01
-.byte $02,$03,$FF
+.byte $35,$36,$37,$2A, $FF
+; ID 1, Title
+table_DuererTiles:
+.byte $53,$FD, $53,$FD, $53,$FD, $53,$54, $53,$FD, $53,$54
+.byte $55,$FD, $56,$FD, $55,$FD, $55,$57, $55,$FD, $55,$57, $FF
+; ID 2, Subtitle
+table_SubtitleTiles:
+.byte _P,_R,_I,_S,_O,_N,__,_O,_F,__,_E,_T,_E,_R,_N,_A,_L,__,_D,_I,_C,_E,__,_R,_O,_L,_L, $FF
 
 
 ; Object behavior
 table_RoomObjBehavior:
 .word RoomObjBehavior_Door
-.word RoomObjBehavior_Stone
+.word RoomObjBehavior_Duerer
+.word RoomObjBehavior_Duerer
 
 ; (TODO do some wolf shit trigger)
 ;ID 0, doors
@@ -370,8 +385,9 @@ TmpX := Scratch+5
 	jmp @OpenDoorTilesLoop
 @TilesLoopEnd:
 ; Set doors timer
-	lda #40
+	lda #120
 	sta DoorsTimer
+	
 	rts
 
 table_OpenDoorTiles:
@@ -384,7 +400,7 @@ table_OpenDoorTiles:
 .byte $4B,$4C,$4D,$FF
 .byte $FF,$FF,$FF,$FF
 
-RoomObjBehavior_Stone:
+RoomObjBehavior_Duerer:
 
 	rts
 
@@ -402,7 +418,7 @@ dungeon_palette:
 .byte $2D,$00,$00,$00
 ; sp
 .byte $2D,$18,$28,$38 ; Fairy
-.byte $2D,$00,$00,$00
+.byte $2D,$0F,$06,$38 ; Doggies
 .byte $2D,$00,$00,$00
 .byte $2D,$00,$00,$00
 
