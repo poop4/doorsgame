@@ -33,7 +33,7 @@ main:
 	lda #1
 	sta Seed
 	; set up to initialize title 
-	lda #MODE_DUNGEON
+	lda #MODE_TITLE
 	sta PrgmMode
 	lda #1
 	sta PrgmMode_update ; set update flag

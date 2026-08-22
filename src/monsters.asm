@@ -57,6 +57,7 @@ DogCellsPtr := TmpPtr
 	
 	lda #1
 	sta DogsState
+	sta DogsState+1
 	
 	lda #56
 	sta DogPosXList

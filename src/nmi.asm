@@ -49,7 +49,7 @@ nmi:
 	:
 	cmp #2
 	bne :+ ; status == 2 turns off rendering 
-	lda #%00000000
+	lda #%00000110
 	sta PPUMASK
 	ldx #0
 	stx nmi_status
