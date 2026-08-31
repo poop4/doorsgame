@@ -11,7 +11,7 @@
 .debuginfo+						;  \______/
 .smart							; /
 
-; _______________________________________________________________
+; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 
 .segment "ZEROPAGE"
 DogsState:		.res 2 ; Beast info
@@ -21,18 +21,18 @@ DogsMomentum:	.res 2 ; Animation x-direction
 MarkedForDeath:	.res 1 ; Kill flag
 
 .segment "BSS"
-Dog0Cells:	.res 65    ; Vessels
+Dog0Cells:	.res 65
 Dog1Cells:	.res 65
 
-; _______________________________________________________________
-; |                                                             |
-; |						Summoning routine						| 
-; |_____________________________________________________________|
-; |																|
+; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW|
+;																|
+; 						Summoning routine						| 
+; ______________________________________________________________|
+; 																|
 .segment "CODE"
 .proc DogsCreate
 ;																|
-;																[0} Preparation
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| Preparation
 ;																|
 DogSeed := Scratch+0
 DogIndex := Scratch+1
@@ -66,7 +66,7 @@ ArrangeBits := Scratch+5
 	cpx #(65+65)
 	bne :-
 ;																|
-;																[1} At fate's hand, beast's spirit awakens
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| At fate's hand, beast's spirit awakens
 ;																|
 ; Dogs amount?
 	ldx #0
@@ -85,6 +85,11 @@ ArrangeBits := Scratch+5
 ; Dogs arrange?
 	ldy DogsState+0
 	beq @Cells
+	
+	; flag dungeon
+	lda DungeonInfo
+	ora #%1
+	sta DungeonInfo 
 
 	lda RoomSeed
 	asl
@@ -135,7 +140,7 @@ ArrangeBits := Scratch+5
 	lda #(56+128)
 	sta DogPosXList+1
 ;																|
-;																[2} Cells filled with life, spirit given being
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| Cells filled with life, spirit given being
 ;																|
 @Cells:
 	lda #0
@@ -212,11 +217,6 @@ ArrangeBits := Scratch+5
 	bne @DogsLoop
 
 	rts
-.endproc
-
-table_DogCellsPtrs:
-.word Dog0Cells
-.word Dog1Cells
 
 table_DogSp:
 .byte $24, $02, $02,    $24, $02, $08
@@ -224,11 +224,21 @@ table_DogSp:
 .byte $34, $03, $00,    $34, $06, $04,    $34, $07, $08,    $34, $08, $0C
 .byte $38, $03, $00,    $3C, $09, $04,    $3C, $0A, $08,    $3C, $0B, $0C
 .byte $43, $0C, $00,    $43, $0D, $FD
+
+.endproc
+
+table_DogCellsPtrs:
+.word Dog0Cells
+.word Dog1Cells
+
+;															END |
 ; ______________________________________________________________|
 
-; _______________________________________________________________
+
+
+; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW|
 ; |                                                             |
-; |                      Life and times							|
+; |                      	The beast							|
 ; |_____________________________________________________________|
 ;																|
 ; Updates every frame, plays continuous 'events' for lifespan
@@ -239,8 +249,8 @@ EventPtr := TmpPtr
 	lda #00
 	sta DogsIndex
 ;																|
-;																[0} Life cycle
-;																| 
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Life cycle
+;																|
 @DogsLoop:
 	ldx DogsIndex
 	lda DogsState, X
@@ -274,8 +284,8 @@ table_DogsEvents:
 event_NoDoggy:
 	rts
 ;																|
-;																[1} The beast, well humored, lies in wait
-;																| 
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| The beast, well humored, lies in wait
+;																|
 event_DogWait:
 	lda DoorsTimer
 	beq @ThatDogDontHunt
@@ -287,7 +297,7 @@ event_DogWait:
 @ThatDogDontHunt:
 	rts
 ;																|
-;																[2} Seeing no other course, its prey tempts fate
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| Seeing no other course, its prey tempts fate
 ;																|
 event_DogHunt:
 	; Setup sprite ptr 
@@ -311,6 +321,13 @@ event_DogHunt:
 
 @PeekPt0:	
 ; Open your door, doggy!!
+	inc DogsTimer, X
+	lda DogsTimer, X
+	cmp #$40
+	bne @FrameEnd
+	lda #$00
+	sta DogsTimer, X
+	
 	ldx #0
 	ldy #3
 @DoorsLoop:
@@ -366,14 +383,14 @@ event_DogHunt:
 	
 	rts
 ;																|
-;																[3.0} The beast finds nothing to kill, and retreats
-;																| 
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| The beast finds nothing to kill, and retreats
+;																|
 event_DogRetreat:
 
 	; TODO this
 	rts	
 ;																|
-;																[3.1} The beast takes its trophy, and trial completes
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| The beast takes its trophy, and trial completes
 ;																|
 event_DogKillYou:
 
@@ -509,4 +526,5 @@ anim_DogPeek_Body:
 	rts
 
 .endproc
+;															END |
 ; ______________________________________________________________|

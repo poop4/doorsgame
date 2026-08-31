@@ -13,6 +13,12 @@
 .segment "ZEROPAGE"
 ; local RNG for current room
 RoomSeed: 				.res 1
+; flags for entire dungeon 
+DungeonInfo:			.res 1
+; b0: dog seed?
+; b1: bird seed?
+; ...
+; more later?
 
 .segment "BSS"
 ; list of indices, used as offsets and to signify object IDs. init as FF
@@ -27,15 +33,15 @@ RoomObjStates:	.res 16
 ; index for queued behaviors. init as FF
 RoomObjBehaviorQueue: .res 4
 
-; _______________________________________________________________
-; |																|
-; |					A new world	borne of chance					|
-; |_____________________________________________________________|
-; |																|
+; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW|
+; 																|
+; 			A new world	borne of chance replaces the old		|
+; ______________________________________________________________|
+; 																|
 .segment "CODE"
 .proc GenerateRoom
 ;																|
-;																[0} Destruction of the old world
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Clear room objects
 ;																|
 ScreenX := Scratch+0
 ScreenY := Scratch+1
@@ -45,6 +51,9 @@ RandomBits := Scratch+4
 ToggleFloor := Scratch+5
 
 ; Initialize room obj 
+	lda #%0
+	sta DungeonInfo
+	
 	ldx #0
 @ClearRoomLoop:
 	lda #$FF 
@@ -64,9 +73,8 @@ ToggleFloor := Scratch+5
 	bne @ClearRoomLoop
 ; The old world is destroyed
 ;																|
-;																[1} Now, paint the new world with fate's fingerprints
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Bricks and rocks 
 ;																|
-; Draw decorative tiles
 ; Transfer global seed to this room
 	lda Seed
 	sta RoomSeed
@@ -150,7 +158,7 @@ ToggleFloor := Scratch+5
 	jmp @RowLoop
 @DoneDrawingDungeon:
 ;																|
-;																[2} Toys of fate, 3 apiece
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Doors
 ;																|
 ; Create door objects
 	lda #OBJ_DOOR
@@ -166,7 +174,7 @@ ToggleFloor := Scratch+5
 	ldy #4
 	jsr CreateRoomObject
 ;																|
-;																[3} What else has fate for us to see?
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| 
 ;																|
 ; Clock rng and store room seed for random selection processes
 	lda Seed
@@ -181,7 +189,8 @@ ToggleFloor := Scratch+5
 ;                                                           END |
 ; ______________________________________________________________|
 
-; _______________________________________________________________
+
+; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW|
 ;																|
 ;							Furnishing							|
 ;_______________________________________________________________|
@@ -191,7 +200,7 @@ ToggleFloor := Scratch+5
 ; Parameters: A = object ID, |  X, Y = tile coordinate offsets
 .proc CreateRoomObject
 ;																|
-;																[0} Reserve space
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Create basic object
 ;																|
 ScreenX := Scratch+0
 ScreenY := Scratch+1
@@ -223,7 +232,7 @@ TilesRow := Scratch+3
 	lda ObjectID
 	sta RoomObjects, X
 ;																|
-;																[1} Create a body to touch
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Object box
 ;																|
 ; Write object box
 	; left 
@@ -247,9 +256,9 @@ TilesRow := Scratch+3
 	adc ScreenY
 	sta RoomObjBoxes_Bottom, X
 ;																|
-;																[2} Create a body to see
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Tiledraw loop
 ;																|
-	; First redivide tile coordinates
+; First redivide tile coordinates
 	lda ScreenX
 	ror
 	ror
@@ -315,6 +324,7 @@ TilesRow := Scratch+3
 	jmp @TilesLoop
 @TilesDone:
 ; TODO handle attributes.................. later
+
 	rts
 
 
@@ -364,7 +374,8 @@ table_SubtitleTiles:
 ;                                                           END |
 ; ______________________________________________________________|
 
-; _______________________________________________________________
+
+; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW|
 ;                                                           	|
 ; 					Furnishing's function						|
 ; ______________________________________________________________|
@@ -373,9 +384,12 @@ table_SubtitleTiles:
 ; Checks for 'queued' roomobj events and executes one per frame
 .proc UpdateRoomObjBehavior
 
+; TODO this
 
 
 	rts
+
+.endproc
 
 ; Object behavior
 table_RoomObjBehavior:
@@ -437,9 +451,20 @@ TmpX := Scratch+5
 	inx
 	jmp @OpenDoorTilesLoop
 @TilesLoopEnd:
+;																|
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __|
+;																|
 ; Set doors timer
-	lda #120
+	lda DungeonInfo
+	and #%00000001; Dogs?
+	beq :+
+	lda #(64+34+16)+8+(34+16+64)
+	jmp :++
+:
+	lda #64+64
+:
 	sta DoorsTimer
+	
 	
 	rts
 
@@ -457,7 +482,6 @@ RoomObjBehavior_Duerer:
 
 	rts
 
-.endproc
 ; 															END |
 ; ______________________________________________________________|
 

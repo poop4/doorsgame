@@ -214,7 +214,7 @@ Dungeon_Scroll:
 ; Increment scroll pos
 	lda ScrollY
 	sec
-	sbc #$05
+	sbc #$02
 	sta ScrollY
 	bcc @DoneScrolling
 	

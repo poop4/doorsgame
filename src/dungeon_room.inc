@@ -52,6 +52,9 @@ ROOMOBJ_MAX = $10
 .global GenerateRoom
 .global CreateRoomObject
 
+; Data
+.globalzp DungeonInfo
+
 ; Tables
 .global table_RoomObjBehavior
 .global RoomObjBehavior_Door ; used by wolves
