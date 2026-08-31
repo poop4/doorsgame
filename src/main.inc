@@ -15,7 +15,6 @@ TOP =			$01
 RIGHT =		$02
 BOTTOM =	$03
 
-
 ;
 ; variables
 ;
@@ -24,7 +23,8 @@ BOTTOM =	$03
 .globalzp TmpPtr
 .globalzp TmpPtr2
 .globalzp PrgmMode
-.globalzp PrgmMode_update
+.globalzp PrgmMode_Diaper
+.globalzp PrgmModeState
 .globalzp PrgmFramePtr
 .globalzp PrgmTimer
 .globalzp ButtonsTimer

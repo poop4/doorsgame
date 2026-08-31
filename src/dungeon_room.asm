@@ -12,10 +12,10 @@
 
 .segment "ZEROPAGE"
 ; local RNG for current room
-RoomSeed: 		.res 1
+RoomSeed: 				.res 1
 
 .segment "BSS"
-; list of indices, used as offsets and to signify object IDs
+; list of indices, used as offsets and to signify object IDs. init as FF
 RoomObjects: 	.res 16
 ; 4 bytes each, holds collision info for room objects
 RoomObjBoxes_Left:		.res 16
@@ -24,10 +24,19 @@ RoomObjBoxes_Right:		.res 16
 RoomObjBoxes_Bottom:	.res 16
 ; default 0, modified on interaction
 RoomObjStates:	.res 16
+; index for queued behaviors. init as FF
+RoomObjBehaviorQueue: .res 4
 
-
+; _______________________________________________________________
+; |																|
+; |					A new world	borne of chance					|
+; |_____________________________________________________________|
+; |																|
 .segment "CODE"
 .proc GenerateRoom
+;																|
+;																[0} Destruction of the old world
+;																|
 ScreenX := Scratch+0
 ScreenY := Scratch+1
 NtHi := Scratch+2
@@ -40,10 +49,23 @@ ToggleFloor := Scratch+5
 @ClearRoomLoop:
 	lda #$FF 
 	sta RoomObjects, X
+	cpx #$04
+	bcs :+
+	sta RoomObjBehaviorQueue, X
+:
+	lda #$00
+	sta RoomObjStates, X
+	sta RoomObjBoxes_Left, X
+	sta RoomObjBoxes_Top, X
+	sta RoomObjBoxes_Right, X
+	sta RoomObjBoxes_Bottom, X
 	inx
 	cpx #$10
 	bne @ClearRoomLoop
-		
+; The old world is destroyed
+;																|
+;																[1} Now, paint the new world with fate's fingerprints
+;																|
 ; Draw decorative tiles
 ; Transfer global seed to this room
 	lda Seed
@@ -127,9 +149,9 @@ ToggleFloor := Scratch+5
 	bne @DrawRow
 	jmp @RowLoop
 @DoneDrawingDungeon:
-	
-	
-
+;																|
+;																[2} Toys of fate, 3 apiece
+;																|
 ; Create door objects
 	lda #OBJ_DOOR
 	ldx #6
@@ -143,32 +165,40 @@ ToggleFloor := Scratch+5
 	ldx #22
 	ldy #4
 	jsr CreateRoomObject
-	
-	
-; Create doggies
-	jsr CreateDogs
-	
-; Last but not least, clock rng
+;																|
+;																[3} What else has fate for us to see?
+;																|
+; Clock rng and store room seed for random selection processes
 	lda Seed
+	sta RoomSeed
 	jsr ClockRNG
 	sta Seed
+	
+; TODO more room generation procedures
+
 	rts
 .endproc
+;                                                           END |
+; ______________________________________________________________|
 
-
+; _______________________________________________________________
+;																|
+;							Furnishing							|
+;_______________________________________________________________|
+;																|
 ; Room object initialization routine
 ; DO NOT USE WITH RENDERING ON
 ; Parameters: A = object ID, |  X, Y = tile coordinate offsets
-; Functionality:
-; Add room object to obj list
-; Create bounds box at specified location
-; Draw object at specified location
 .proc CreateRoomObject
+;																|
+;																[0} Reserve space
+;																|
 ScreenX := Scratch+0
 ScreenY := Scratch+1
 ObjectID := Scratch+2
 TileTblPtr := TmpPtr
 TilesRow := Scratch+3
+
 ; Store ID to earliest available object in list 
 	sta ObjectID
 	; Translate XY tile coordinates to screen space
@@ -192,6 +222,9 @@ TilesRow := Scratch+3
 @WriteObjID:
 	lda ObjectID
 	sta RoomObjects, X
+;																|
+;																[1} Create a body to touch
+;																|
 ; Write object box
 	; left 
 	lda table_RoomObjBoxes + LEFT
@@ -213,9 +246,9 @@ TilesRow := Scratch+3
 	clc
 	adc ScreenY
 	sta RoomObjBoxes_Bottom, X
-; Draw object graphics
-; Initial size should be identical to the object's Box, so...
-; use RIGHT value div 8 as a row indicator for draws
+;																|
+;																[2} Create a body to see
+;																|
 	; First redivide tile coordinates
 	lda ScreenX
 	ror
@@ -283,7 +316,7 @@ TilesRow := Scratch+3
 @TilesDone:
 ; TODO handle attributes.................. later
 	rts
-.endproc
+
 
 .segment "RODATA"
 table_RoomObjBoxes:
@@ -302,6 +335,10 @@ table_RoomObjBoxes:
 .byte 00
 .byte 224
 .byte 8
+; ID 3, Puddle
+
+; ID 4, DeadThing
+
 
 table_RoomObjTiles:
 .word table_DoorTiles
@@ -323,6 +360,22 @@ table_DuererTiles:
 table_SubtitleTiles:
 .byte _P,_R,_I,_S,_O,_N,__,_O,_F,__,_E,_T,_E,_R,_N,_A,_L,__,_D,_I,_C,_E,__,_R,_O,_L,_L, $FF
 
+.endproc
+;                                                           END |
+; ______________________________________________________________|
+
+; _______________________________________________________________
+;                                                           	|
+; 					Furnishing's function						|
+; ______________________________________________________________|
+;                                                           	|
+; Intended to be used during dungeon frame routine
+; Checks for 'queued' roomobj events and executes one per frame
+.proc UpdateRoomObjBehavior
+
+
+
+	rts
 
 ; Object behavior
 table_RoomObjBehavior:
@@ -330,7 +383,6 @@ table_RoomObjBehavior:
 .word RoomObjBehavior_Duerer
 .word RoomObjBehavior_Duerer
 
-; (TODO do some wolf shit trigger)
 ;ID 0, doors
 RoomObjBehavior_Door:
 ObjectIndex := Scratch+0
@@ -370,6 +422,7 @@ TmpX := Scratch+5
 	stx TmpX
 	ldx RowCurrX
 	jsr ppu_update_tile
+	
 	inc RowCurrX
 	ldx RowCurrX
 	cpx RowEndX
@@ -404,6 +457,9 @@ RoomObjBehavior_Duerer:
 
 	rts
 
+.endproc
+; 															END |
+; ______________________________________________________________|
 
 ; pALEETE data.
 .byte $2D,$00,$10,$32 ; Doors alts 

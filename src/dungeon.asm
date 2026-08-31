@@ -36,7 +36,6 @@ Dungeon_Load:
 
 	; first things first
 	jsr ppu_off
-	; TODO: parameterized palette selection (based on doors passed maybe?)
 	ldx #0
 :
 	lda dungeon_palette, x
@@ -107,20 +106,7 @@ Dungeon_Load:
 	cpy #2
 	bne :-
 	
-; Initialize fairy.
-	jsr CreateFairy
-
-;  Initialize CursorBoundsBox
-	lda #$10
-	sta CursorBoundsBox + LEFT
-	lda #$30
-	sta CursorBoundsBox + TOP
-	lda #$EF
-	sta CursorBoundsBox + RIGHT 
-	lda #$DF
-	sta CursorBoundsBox + BOTTOM	
-	
-; Clear object cells list
+; Clear sprite object cells list
 	ldx #0
 	lda #0
 :
@@ -128,9 +114,15 @@ Dungeon_Load:
 	inx
 	cpx #$10
 	bne :-
-	
+
 ; Generate room
 	jsr GenerateRoom
+
+; Initialize fairy
+	jsr FairyCreate
+
+; Initialize doggies
+	jsr DogsCreate
 
 ; Send to frame
 	lda #<Dungeon_Frame
@@ -139,68 +131,111 @@ Dungeon_Load:
 	sta PrgmFramePtr+1	
 	jmp (PrgmFramePtr)
 
+;
+;
+;
 
-Dungeon_Frame: 
+Dungeon_Frame:
+; Scroll?
 	lda NeedScroll
-	beq @DoFrame
+	beq :+
+	jsr Dungeon_Scroll
+	jmp @End
+:
+; Button presses?	
+	lda CursorState
+	cmp #FAIRY_STOPPED
+	beq @FairyDone
+; A
+	lda #PAD_A
+	jsr CheckButtons
+	beq :+
+	; Check for interactable objects, set cooldown
+	jsr FairyCheckInteract
+	lda #$10
+	sta ButtonsTimer
+; Dpad	
+:
+	lda #PAD_LEFT
+	jsr CheckButtons
+	beq :+
+	jsr FairyMove_Left
+:
+	lda #PAD_UP
+	jsr CheckButtons
+	beq :+
+	jsr FairyMove_Up
+:
+	lda #PAD_RIGHT
+	jsr CheckButtons
+	beq :+
+	jsr FairyMove_Right
+:
+	lda #PAD_DOWN
+	jsr CheckButtons
+	beq :+
+	jsr FairyMove_Down
+:	
+; Apply velocity and check bounds
+	jsr FairyMove
 	
+	jsr FairyBoundsCheck
+
+@FairyDone:	
+	
+	jsr HandleFairyEvents
+
+	jsr HandleDogsEvents
+
+; Room transition?
+	lda DoorsTimer
+	beq @End ; nope
+	
+	; Door event has begun, stop cursor
+	lda #FAIRY_STOPPED
+	sta CursorState
+	
+	dec DoorsTimer
+	bne @End
+	
+; Load next dungeon room
+	jsr Dungeon_Transition
+
+@End:
+	jsr ppu_update
+	
+	jmp mainloop
+	
+;
+;
+;
+
+Dungeon_Scroll:	
 ; Increment scroll pos
 	lda ScrollY
 	sec
-	sbc #$01
+	sbc #$05
 	sta ScrollY
 	bcc @DoneScrolling
-	jmp @End
+	
+	rts
 	
 @DoneScrolling:
 ; Turn on sprites
 	lda #%00010000
 	sta SpritesOn
-	
 ; Reset scroll indicators
 	lda #0
 	sta ScrollY
 	sta NeedScroll
 	
-@DoFrame:
-	jsr FairyBoundsCheck
-	
-	;
-	; TODO here, handle room objects changing 
-	; state outside of fairyboundscheck
-	;
+	rts
 
-	jsr FairyMove_Player
-	
-; Button press?
-	lda ButtonsTimer
-	bne @NoButtonPress
-	
-	lda Buttons
-	and #PAD_A
-	beq @NoButtonPress
-	
-	lda #$10
-	sta ButtonsTimer
-	
-	jsr FairyCheckInteract
-	
-@NoButtonPress:
-	lda ButtonsTimer
-	beq @NoButtonsTimeout
-	dec ButtonsTimer
-	
-@NoButtonsTimeout:
-; Room transition?
-	lda DoorsTimer
-	beq @NoNextRoom ; nope
-	
-	lda #FAIRY_STOPPED
-	sta CursorState
-	dec DoorsTimer
-	bne @NoNextRoom
-	
-; Room transition.
+;
+;
+;
+
+Dungeon_Transition:
 	; Queue scroll
 	lda #$EF
 	sta ScrollY
@@ -214,15 +249,10 @@ Dungeon_Frame:
 	lda #%00000000
 	sta SpritesOn
 	
-	; Load new room
-	jmp Dungeon_Load
+	; Signal state change
+	lda #MODE_DUNGEON
+	sta PrgmMode
+	lda #1
+	sta PrgmMode_Diaper
 	
-@NoNextRoom:
-	;jsr DrawFairy
-	jsr HandleDogsEvents
-	
-	jsr UpdateCells
-
-@End:
-	jsr ppu_update
-	jmp mainloop
+	rts

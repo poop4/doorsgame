@@ -328,3 +328,10 @@
 ; then finish up dogs, random generation, opening doors, retreating 
 ; & game over handling
 
+; 8/26
+; i fucked up baddddddd
+; ok i took a break and did some boilerplate work on another project
+; and now im kinda in an action paralysis state
+; gonna try writing down stuff that needs to happen, make a plan of action yk
+; hopefully be back soon!
+

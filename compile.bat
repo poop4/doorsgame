@@ -24,6 +24,6 @@ src/obj/dungeon.o ^
 src/obj/dungeon_room.o ^
 src/obj/rng.o ^
 src/obj/monsters.o ^
--o "doors.nes" --dbgfile "lalala.dbg"
+-o "doors.nes" --dbgfile "doors.dbg"
 
 pause

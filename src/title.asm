@@ -128,7 +128,7 @@ Title_Frame:
 	lda #MODE_DUNGEON
 	sta PrgmMode
 	lda #1
-	sta PrgmMode_update
+	sta PrgmMode_Diaper
 	lda #120
 	sta CursorX
 @StillScrolling:

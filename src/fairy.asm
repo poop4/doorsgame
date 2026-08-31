@@ -11,6 +11,7 @@
 .include "main.inc"
 .include "buttons.inc"
 .include "dungeon_room.inc"
+.include "ppu_utility.inc"
 
 .segment "ZEROPAGE"
 CursorX_v:			.res 1 ; velocity in px/f
@@ -22,74 +23,57 @@ CursorAnimToggle:	.res 1
 CursorBoundsBox:	.res 4 ; Left, top, right, bottom
 
 .segment "BSS"
-CursorCells:		.res 16
+CursorCells:		.res 17
 
 
 .segment "CODE"
 
-CreateFairy:
+.proc FairyCreate
 ; Fairy initialize
 	lda #200
 	sta CursorY
 	lda #FAIRY_NORMAL
 	sta CursorState
 	
-	rts
-
-
-
-; Animate the fairy via a toggle every X frames
-; TODO Add a table for left + right movement and include cases
-; TODO Update this later to include Interaction state sprite
-; or maybe kirby star thing 
-DrawFairy:
-	lda PrgmTimer
-	and #%00000100
-	beq @Frame0
-	lda #1
-	sta CursorAnimToggle
-	jmp @Frame1
-@Frame0:	
-	lda #0
-	sta CursorAnimToggle
-@Frame1:
+; Create cells	
 	ldx #0
-	ldy oam_index
-@Draw:
-; Store Ypos
-	lda CursorY
-	clc
-	adc table_FairySp, X
-	sta oam, Y
+:
+	lda CellsList, X
+	beq :+
 	inx
-	iny
-; Store TileID
-	lda table_FairySp, X	
-	clc
-	adc CursorAnimToggle
-	sta oam, Y	
 	inx
-	iny
-; Store Attr
+	jmp :-
+:	
+	lda ptr_FairyCells
+	sta CellsList, X
+	lda ptr_FairyCells+1
+	sta CellsList+1, X
+
+; Fill cells!
+	ldx #0
+@CellularDistribution:
 	lda table_FairySp, X
-	sta oam, Y
+	sta CursorCells, X
 	inx
-	iny
-; Store Xpos
-	lda CursorX
-	clc
-	adc table_FairySp, X
-	sta oam, Y
-	inx
-	iny
 	cpx #$10
-	bne @Draw
-; Update oam counter
-	lda oam_index
-	clc
-	adc #$10
-	sta oam_index
+	bne @CellularDistribution
+	; Place terminator
+	lda #$FF
+	sta CursorCells, X
+	
+;  Initialize CursorBoundsBox
+	lda #$10
+	sta CursorBoundsBox + LEFT
+	lda #$30
+	sta CursorBoundsBox + TOP
+	lda #$EF
+	sta CursorBoundsBox + RIGHT 
+	lda #$DF
+	sta CursorBoundsBox + BOTTOM	
+
+	
 	rts
+
 
 table_FairySp:
 .byte $00,$00,%00000000,$00
@@ -97,6 +81,26 @@ table_FairySp:
 .byte $08,$02,%00000000,$00
 .byte $08,$02,%01000000,$08
 
+ptr_FairyCells:
+.word CursorCells
+
+.endproc
+
+;
+;
+;
+
+HandleFairyEvents:
+
+	; TODO here
+	; everything
+
+	rts
+
+
+;
+;
+;
 
 FairyBoundsCheck:
 	; This subroutine checks against the current CursorBoundsBox and pushes back against it if necessary
@@ -133,7 +137,7 @@ FairyBoundsCheck:
 	adc #$10
 	cmp CursorBoundsBox + BOTTOM
 	bcc @End
-	lda #00
+	lda #$00
 	sta CursorY_v
 	lda CursorBoundsBox + BOTTOM
 	sec
@@ -142,105 +146,93 @@ FairyBoundsCheck:
 @End:
 	rts
 
+;
+;
+;
 
-FairyMove_Player:
-	lda CursorState
-	cmp #FAIRY_STOPPED 
-	bne @ImbuePlayerWill
-	; Cursor shouldn't be movable by player, return
+; We can call these placeholders for now. They'll work.
+
+FairyMove_Left:
+	lda #$FE
+	sta CursorX_v
+	
 	rts
-@ImbuePlayerWill:
-; Load buttonstate and act accordingly
-	lda Buttons
-	and #PAD_UP
-	beq :+
-	lda CursorY_v
-	cmp #$FE
-	beq :+ ; capped, skip
-	clc
-	adc #$FE
+
+FairyMove_Up:
+	lda #$FE
 	sta CursorY_v
-:
-	lda Buttons
-	and #PAD_DOWN
-	beq :+
-	lda CursorY_v
-	cmp #$02
-	beq :+
-	clc
-	adc #$02
+	
+	rts
+
+FairyMove_Right:
+	lda #$02
+	sta CursorX_v
+	
+	rts
+
+FairyMove_Down:
+	lda #$02
 	sta CursorY_v
-:
-	lda Buttons
-	and #PAD_LEFT
-	beq :+
-	lda CursorX_v 
-	cmp #$FE
-	beq :+
-	clc
-	adc #$FE
-	sta CursorX_v
-:
-	lda Buttons
-	and #PAD_RIGHT
-	beq :+
-	lda CursorX_v
-	cmp #$02
-	beq :+
-	clc
-	adc #$02
-	sta CursorX_v
-:
-	; upd x
+	
+	rts
+
+FairyMove:
+; Add velocity to XY
 	lda CursorX
 	clc
 	adc CursorX_v
 	sta CursorX
-	; upd y
+	
 	lda CursorY
 	clc
 	adc CursorY_v
 	sta CursorY
-; Friction, will slow to a stop if no buttons r pressed
-	; y-dir
-	lda CursorY_v
-	bpl :+
-	; is negative
-	clc
-	adc #$01
-	bmi :++
-:
-	; is positive
-	beq :+
-	; is nonzero
-	sec
-	sbc #$01
-:
+
+	lda #0
+	sta CursorX_v
 	sta CursorY_v
 	
-	; x-dir
-	lda CursorX_v
-	bpl :+
-	; is negative
+; Store XY in cells
+	ldx #0
+	ldy #0
+@UpdateXY:
+	lda table_FairyXYoffsets, Y
 	clc
-	adc #$01
-	bmi :++
-:
-	; is positive
-	beq :+
-	; is nonzero
-	sec
-	sbc #$01
-:
-	sta CursorX_v
+	adc CursorY
+	sta CursorCells, X
+	
+	iny
+	inx
+	inx
+	inx
+	
+	lda table_FairyXYoffsets, Y
+	clc
+	adc CursorX
+	sta CursorCells, X
+	
+	iny
+	inx
+	
+	cpy #8
+	bne @UpdateXY
+	
+	
 	rts
 	
+table_FairyXYoffsets:
+.byte $00, $00
+.byte $00, $08
+.byte $08, $00
+.byte $08, $08
+	
+;
+;
+;
 
-; figure out which box you're in
-; Increment ObjectState if you're in a box
-; otherwise (TODO) play nono sound and rts
+; (TODO) play nono sound and rts
 ; NOTE: this only adjusts state for the earliest box triggered in the list
-; right now that shouldn't be a problem. just keep that in mind though
+
 .proc FairyCheckInteract
 CursorHitPtX:= Scratch+0
 CursorHitPtY:= Scratch+1
@@ -252,7 +244,8 @@ CursorHitPtY:= Scratch+1
 	clc
 	adc #$08
 	sta CursorHitPtY
-	ldx #0
+
+	ldx #0	
 @CompareLoop:
 ; Go thru each object and trivially reject
 	lda CursorHitPtX
@@ -265,14 +258,17 @@ CursorHitPtY:= Scratch+1
 	bcc @NextObject
 	cmp RoomObjBoxes_Bottom, X
 	bcs @NextObject
+	
 ; We have entered a fucking box, fuck yes
 	inc RoomObjStates, X
 	jmp @DoRoomObjBehavior
+	
 @NextObject:
 	inx
 	cpx #ROOMOBJ_MAX
 	bne @CompareLoop
 	jmp @RtsWithoutDoinNothin
+	
 ; All objects checked, run interact code for highest order collision
 @DoRoomObjBehavior:
 	stx Scratch+0 ; Object index for behavior call
@@ -285,6 +281,8 @@ CursorHitPtY:= Scratch+1
 	sta TmpPtr+1
 	jmp (TmpPtr)
 	; rts handled by Object behavior
+	
 @RtsWithoutDoinNothin:
 	rts
+	
 .endproc

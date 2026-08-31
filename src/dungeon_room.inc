@@ -54,4 +54,5 @@ ROOMOBJ_MAX = $10
 
 ; Tables
 .global table_RoomObjBehavior
+.global RoomObjBehavior_Door ; used by wolves
 .global dungeon_palette

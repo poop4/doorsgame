@@ -14,6 +14,7 @@ PAD_RIGHT	= $80
 ; subroutine
 
 .global ReadJoypad1
+.global CheckButtons
 
 ; variable
 

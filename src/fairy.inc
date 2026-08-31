@@ -10,13 +10,16 @@ FAIRY_STOPPED =	$01
 .globalzp CursorX
 .globalzp CursorY
 .globalzp CursorState
-.globalzp CursorBoundsBox
 
 ; subroutines
-.global CreateFairy
-.global DrawFairy
+.global FairyCreate
+.global HandleFairyEvents
 .global FairyBoundsCheck
-.global FairyMove_Player
+.global FairyMove_Left
+.global FairyMove_Up
+.global FairyMove_Right
+.global FairyMove_Down
+.global FairyMove
 .global FairyCheckInteract
 
 ; tables
