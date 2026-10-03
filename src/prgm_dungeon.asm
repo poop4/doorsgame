@@ -1,41 +1,35 @@
 ;
 ; Top level dungeon management
-; Calls dungeon room setup subroutines in accordance to RNG
-; Manages per-frame behavior, namely dungeon events (pass, death, entities, interactions)
 ;
 
 .debuginfo +
 .smart
-.include "dungeon.inc"
+.include "prgm_dungeon.inc"
 .include "system.inc"
-.include "main.inc"
+.include "prgm.inc"
 .include "buttons.inc"
 .include "nmi.inc"
 .include "fairy.inc"
 .include "ppu_utility.inc"
 .include "dungeon_room.inc"
 .include "monsters.inc"
-
+.include "score.inc"
 .include "rng.inc"
 
-
-; jumped to every time a new level needs initialized
+; _______________________________________________________________
+; 																|
+;					World initialization						|
+; 																|
 .segment "CODE"
 Dungeon_Load:
+; TEST seeds
+	;lda VALUE
+	;sta Seed
 
-	; DEBUG TOOL DELETELATER
-	lda Seed
-	cmp #1
-	bne :+
-	lda #1
-	sta NeedScroll
-	lda #60
-	sta CursorX
-
-:
-
-	; first things first
+; Disable rendering
 	jsr ppu_off
+	
+; Upload palette
 	ldx #0
 :
 	lda dungeon_palette, x
@@ -43,6 +37,7 @@ Dungeon_Load:
 	inx
 	cpx #32
 	bne :-
+
 ; clear next nt
 	lda ScrollNt
 	asl
@@ -50,29 +45,9 @@ Dungeon_Load:
 	clc
 	adc #$20
 	jsr bgSetup
-	
-; Side walls
-	lda #$FE
-	ldy #$00
-	jsr bgDrawStripeY
-	lda #$51
-	iny
-	jsr bgDrawStripeY
-	lda #$52
-	ldy #$1E
-	jsr bgDrawStripeY
-	lda #$FE
-	iny
-	jsr bgDrawStripeY
-; Top wall
-	lda #$FE
-	ldy #$00
-	jsr bgDrawStripeX
-	lda #$50
-	ldy #$01
-	jsr bgDrawStripeX
 
 ; Set attr
+; TODO replace this with dynamic attribute mod in create_object
 	lda PPUSTATUS
 	lda ScrollNt
 	asl
@@ -108,21 +83,29 @@ Dungeon_Load:
 	
 ; Clear sprite object cells list
 	ldx #0
-	lda #0
+	lda #$00
 :
-	sta CellsList, X
+	sta cells_Ptrs, X
 	inx
 	cpx #$10
 	bne :-
 
 ; Generate room
-	jsr GenerateRoom
+	jsr create_Room
+	
+; Initialize score & stage
+	jsr handler_ScoreDisplay
 
+	jsr handler_StageDisplay		
+	
+	lda #$0A
+	sta points_PerDoor
+	
 ; Initialize fairy
-	jsr FairyCreate
+	jsr create_fairy
 
 ; Initialize doggies
-	jsr DogsCreate
+	jsr create_dogs
 
 ; Send to frame
 	lda #<Dungeon_Frame
@@ -131,19 +114,27 @@ Dungeon_Load:
 	sta PrgmFramePtr+1	
 	jmp (PrgmFramePtr)
 
-;
-;
-;
+;															END |
+; ______________________________________________________________|
 
+
+; _______________________________________________________________
+; 																|
+; 							World								|
+;																|
+
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Main routine
+;																|
 Dungeon_Frame:
 ; Scroll?
 	lda NeedScroll
 	beq :+
 	jsr Dungeon_Scroll
-	jmp @End
+	jmp @Done
 :
+
 ; Button presses?	
-	lda CursorState
+	lda fairy_State
 	cmp #FAIRY_STOPPED
 	beq @FairyDone
 ; A
@@ -151,7 +142,7 @@ Dungeon_Frame:
 	jsr CheckButtons
 	beq :+
 	; Check for interactable objects, set cooldown
-	jsr FairyCheckInteract
+	jsr fairy_CheckInteract
 	lda #$10
 	sta ButtonsTimer
 ; Dpad	
@@ -159,62 +150,83 @@ Dungeon_Frame:
 	lda #PAD_LEFT
 	jsr CheckButtons
 	beq :+
-	jsr FairyMove_Left
+	jsr fairy_MoveLeft
 :
 	lda #PAD_UP
 	jsr CheckButtons
 	beq :+
-	jsr FairyMove_Up
+	jsr fairy_MoveUp
 :
 	lda #PAD_RIGHT
 	jsr CheckButtons
 	beq :+
-	jsr FairyMove_Right
+	jsr fairy_MoveRight
 :
 	lda #PAD_DOWN
 	jsr CheckButtons
 	beq :+
-	jsr FairyMove_Down
+	jsr fairy_MoveDown
 :	
 ; Apply velocity and check bounds
-	jsr FairyMove
+	jsr fairy_Move
 	
-	jsr FairyBoundsCheck
+	jsr fairy_BoundsCheck
 
 @FairyDone:	
 	
-	jsr HandleFairyEvents
+; Handle all entity events for this frame
+	jsr handler_fairy_Behavior
 
-	jsr HandleDogsEvents
+	jsr handler_dogs_Behavior
+	
+	jsr handler_object_Behavior
+	
+	jsr handler_scorePips
 
 ; Room transition?
-	lda DoorsTimer
-	beq @End ; nope
+	lda NextRoomTimer
+	beq @Done ; nope
 	
 	; Door event has begun, stop cursor
 	lda #FAIRY_STOPPED
-	sta CursorState
+	sta fairy_State
 	
-	dec DoorsTimer
-	bne @End
+	dec NextRoomTimer
+	bne @Done
 	
-; Load next dungeon room
+; Timer done, next dungeon room
 	jsr Dungeon_Transition
 
-@End:
+@Done:
 	jsr ppu_update
 	
 	jmp mainloop
 	
-;
-;
-;
+;																|
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Stage scroll
+;																|
 
-Dungeon_Scroll:	
+Dungeon_Scroll:
+; Wait half a second? (for score & room)
+	lda ScrollY
+	cmp #$D4
+	bcs :+
+; Tick score points
+	lda PrgmTimer_4f
+	bne :+
+
+	lda points
+	beq :+
+	; Bucket
+	dec points
+	inc score
+	
+	jsr handler_ScoreDisplay
+:
 ; Increment scroll pos
 	lda ScrollY
 	sec
-	sbc #$02
+	sbc #$01
 	sta ScrollY
 	bcc @DoneScrolling
 	
@@ -228,15 +240,18 @@ Dungeon_Scroll:
 	lda #0
 	sta ScrollY
 	sta NeedScroll
-	
+
 	rts
 
-;
-;
-;
+;																|
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Stage transition
+;																|
 
 Dungeon_Transition:
-	; Queue scroll
+; stage count	
+	inc stage
+
+; Queue scroll
 	lda #$EF
 	sta ScrollY
 	lda ScrollNt
@@ -245,14 +260,16 @@ Dungeon_Transition:
 	lda #1
 	sta NeedScroll
 	
-	; Turn OFF sprites
+; Turn OFF sprites
 	lda #%00000000
 	sta SpritesOn
 	
-	; Signal state change
+; Signal state change
 	lda #MODE_DUNGEON
 	sta PrgmMode
 	lda #1
 	sta PrgmMode_Diaper
 	
 	rts
+;															END |
+; ______________________________________________________________|

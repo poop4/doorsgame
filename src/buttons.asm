@@ -2,9 +2,11 @@
 ; buttons handling. just one sub for now
 ;
 
+.debuginfo+
+.smart
 .include "system.inc"
 .include "buttons.inc"
-.include "main.inc"
+.include "prgm.inc"
 
 .segment "ZEROPAGE"
 Buttons:		.res 1
@@ -42,7 +44,7 @@ PadID := Scratch+0
 ; Timeout, wait until timer 0
 	dec ButtonsTimer
 	lda #0
-	jmp @End
+	jmp @Done
 	
 @NoTimeout:
 	sta PadID
@@ -52,11 +54,11 @@ PadID := Scratch+0
 	beq :+
 ; NOTE: ROUTINES MUST SET BUTTONSTIMER THEMSELVES!!
 	lda #1	
-	jmp @End
+	jmp @Done
 :
 	lda #0 
 
-@End:
+@Done:
 	rts
 
 .endproc

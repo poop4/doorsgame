@@ -1,0 +1,5 @@
+;
+;
+;
+
+.global Death_Load

@@ -2,6 +2,8 @@
 ; clock rng
 ; initialize seed (reset vector)
 
+.debuginfo+
+.smart
 .include "rng.inc"
 
 .segment "ZEROPAGE"

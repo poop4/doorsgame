@@ -6,70 +6,67 @@
 .debuginfo+
 .smart
 .include "fairy.inc"
-.include "system.inc"
-.include "nmi.inc"
-.include "main.inc"
-.include "buttons.inc"
+.include "prgm.inc"
 .include "dungeon_room.inc"
 .include "ppu_utility.inc"
 
 .segment "ZEROPAGE"
-CursorX_v:			.res 1 ; velocity in px/f
-CursorY_v: 			.res 1
-CursorX:			.res 1 ; actual position
-CursorY:			.res 1
-CursorState:		.res 1
-CursorAnimToggle:	.res 1
-CursorBoundsBox:	.res 4 ; Left, top, right, bottom
+fairy_X_v:			.res 1 ; velocity in px/f
+fairy_Y_v: 			.res 1
+fairy_X:			.res 1 ; actual position
+fairy_Y:			.res 1
+fairy_State:		.res 1
+fairy_AnimToggle:	.res 1
+fairy_BoundsBox:	.res 4 ; Left, top, right, bottom
 
 .segment "BSS"
-CursorCells:		.res 17
+cells_fairy:		.res 17
 
 
 .segment "CODE"
 
-.proc FairyCreate
+.proc create_fairy
 ; Fairy initialize
 	lda #200
-	sta CursorY
+	sta fairy_Y
 	lda #FAIRY_NORMAL
-	sta CursorState
+	sta fairy_State
 	
 ; Create cells	
 	ldx #0
 :
-	lda CellsList, X
+	lda cells_Ptrs, X
 	beq :+
 	inx
 	inx
 	jmp :-
 :	
-	lda ptr_FairyCells
-	sta CellsList, X
-	lda ptr_FairyCells+1
-	sta CellsList+1, X
+	lda ptr_cells_fairy
+	sta cells_Ptrs, X
+	lda ptr_cells_fairy+1
+	sta cells_Ptrs+1, X
 
 ; Fill cells!
 	ldx #0
 @CellularDistribution:
 	lda table_FairySp, X
-	sta CursorCells, X
+	sta cells_fairy, X
 	inx
 	cpx #$10
 	bne @CellularDistribution
 	; Place terminator
 	lda #$FF
-	sta CursorCells, X
+	sta cells_fairy, X
 	
-;  Initialize CursorBoundsBox
+;  Initialize fairy_BoundsBox
 	lda #$10
-	sta CursorBoundsBox + LEFT
+	sta fairy_BoundsBox + LEFT
 	lda #$30
-	sta CursorBoundsBox + TOP
+	sta fairy_BoundsBox + TOP
 	lda #$EF
-	sta CursorBoundsBox + RIGHT 
+	sta fairy_BoundsBox + RIGHT 
 	lda #$DF
-	sta CursorBoundsBox + BOTTOM	
+	sta fairy_BoundsBox + BOTTOM	
 
 	
 	rts
@@ -81,8 +78,8 @@ table_FairySp:
 .byte $08,$02,%00000000,$00
 .byte $08,$02,%01000000,$08
 
-ptr_FairyCells:
-.word CursorCells
+ptr_cells_fairy:
+.word cells_fairy
 
 .endproc
 
@@ -90,7 +87,7 @@ ptr_FairyCells:
 ;
 ;
 
-HandleFairyEvents:
+handler_fairy_Behavior:
 
 	; TODO here
 	; everything
@@ -102,48 +99,48 @@ HandleFairyEvents:
 ;
 ;
 
-FairyBoundsCheck:
-	; This subroutine checks against the current CursorBoundsBox and pushes back against it if necessary
-	lda CursorX
-	cmp CursorBoundsBox + LEFT
+fairy_BoundsCheck:
+	; This subroutine checks against the current fairy_BoundsBox and pushes back against it if necessary
+	lda fairy_X
+	cmp fairy_BoundsBox + LEFT
 	bcs @CheckTop
 	lda #00
-	sta CursorX_v
-	lda CursorBoundsBox + LEFT
-	sta CursorX
+	sta fairy_X_v
+	lda fairy_BoundsBox + LEFT
+	sta fairy_X
 @CheckTop:
-	lda CursorY
-	cmp CursorBoundsBox + TOP
+	lda fairy_Y
+	cmp fairy_BoundsBox + TOP
 	bcs @CheckRight
 	lda #00
-	sta CursorY_v
-	lda CursorBoundsBox + TOP
-	sta CursorY
+	sta fairy_Y_v
+	lda fairy_BoundsBox + TOP
+	sta fairy_Y
 @CheckRight:
-	lda CursorX 
+	lda fairy_X 
 	clc
 	adc #$10
-	cmp CursorBoundsBox + RIGHT
+	cmp fairy_BoundsBox + RIGHT
 	bcc @CheckBottom
 	lda #00
-	sta CursorX_v
-	lda CursorBoundsBox + RIGHT
+	sta fairy_X_v
+	lda fairy_BoundsBox + RIGHT
 	sec
 	sbc #$10
-	sta CursorX
+	sta fairy_X
 @CheckBottom:
-	lda CursorY
+	lda fairy_Y
 	clc
 	adc #$10
-	cmp CursorBoundsBox + BOTTOM
-	bcc @End
+	cmp fairy_BoundsBox + BOTTOM
+	bcc @Done
 	lda #$00
-	sta CursorY_v
-	lda CursorBoundsBox + BOTTOM
+	sta fairy_Y_v
+	lda fairy_BoundsBox + BOTTOM
 	sec
 	sbc #$10
-	sta CursorY
-@End:
+	sta fairy_Y
+@Done:
 	rts
 
 ;
@@ -152,64 +149,64 @@ FairyBoundsCheck:
 
 ; We can call these placeholders for now. They'll work.
 
-FairyMove_Left:
+fairy_MoveLeft:
 	lda #$FE
-	sta CursorX_v
+	sta fairy_X_v
 	
 	rts
 
-FairyMove_Up:
+fairy_MoveUp:
 	lda #$FE
-	sta CursorY_v
+	sta fairy_Y_v
 	
 	rts
 
-FairyMove_Right:
+fairy_MoveRight:
 	lda #$02
-	sta CursorX_v
+	sta fairy_X_v
 	
 	rts
 
-FairyMove_Down:
+fairy_MoveDown:
 	lda #$02
-	sta CursorY_v
+	sta fairy_Y_v
 	
 	rts
 
-FairyMove:
+fairy_Move:
 ; Add velocity to XY
-	lda CursorX
+	lda fairy_X
 	clc
-	adc CursorX_v
-	sta CursorX
+	adc fairy_X_v
+	sta fairy_X
 	
-	lda CursorY
+	lda fairy_Y
 	clc
-	adc CursorY_v
-	sta CursorY
+	adc fairy_Y_v
+	sta fairy_Y
 
 	lda #0
-	sta CursorX_v
-	sta CursorY_v
+	sta fairy_X_v
+	sta fairy_Y_v
 	
 ; Store XY in cells
 	ldx #0
 	ldy #0
 @UpdateXY:
-	lda table_FairyXYoffsets, Y
+	lda table_OAMattr_fairy, Y
 	clc
-	adc CursorY
-	sta CursorCells, X
+	adc fairy_Y
+	sta cells_fairy, X
 	
 	iny
 	inx
 	inx
 	inx
 	
-	lda table_FairyXYoffsets, Y
+	lda table_OAMattr_fairy, Y
 	clc
-	adc CursorX
-	sta CursorCells, X
+	adc fairy_X
+	sta cells_fairy, X
 	
 	iny
 	inx
@@ -220,7 +217,7 @@ FairyMove:
 	
 	rts
 	
-table_FairyXYoffsets:
+table_OAMattr_fairy:
 .byte $00, $00
 .byte $00, $08
 .byte $08, $00
@@ -233,56 +230,43 @@ table_FairyXYoffsets:
 ; (TODO) play nono sound and rts
 ; NOTE: this only adjusts state for the earliest box triggered in the list
 
-.proc FairyCheckInteract
-CursorHitPtX:= Scratch+0
-CursorHitPtY:= Scratch+1
-	lda CursorX
+.proc fairy_CheckInteract
+fairy_HitPtX:= Scratch+0
+fairy_HitPtY:= Scratch+1
+	lda fairy_X
 	clc
 	adc #$08
-	sta CursorHitPtX
-	lda CursorY
+	sta fairy_HitPtX
+	lda fairy_Y
 	clc
 	adc #$08
-	sta CursorHitPtY
+	sta fairy_HitPtY
 
 	ldx #0	
 @CompareLoop:
 ; Go thru each object and trivially reject
-	lda CursorHitPtX
-	cmp RoomObjBoxes_Left, X
+	lda fairy_HitPtX
+	cmp object_Boxes_Left, X
 	bcc @NextObject 
-	cmp RoomObjBoxes_Right, X
+	cmp object_Boxes_Right, X
 	bcs @NextObject
-	lda CursorHitPtY
-	cmp RoomObjBoxes_Top, X
+	lda fairy_HitPtY
+	cmp object_Boxes_Top, X
 	bcc @NextObject
-	cmp RoomObjBoxes_Bottom, X
+	cmp object_Boxes_Bottom, X
 	bcs @NextObject
 	
 ; We have entered a fucking box, fuck yes
-	inc RoomObjStates, X
-	jmp @DoRoomObjBehavior
+	txa
+	jsr object_QueueBehavior
+	jmp @Done
 	
 @NextObject:
 	inx
-	cpx #ROOMOBJ_MAX
+	cpx #OBJ_MAXAMT
 	bne @CompareLoop
-	jmp @RtsWithoutDoinNothin
 	
-; All objects checked, run interact code for highest order collision
-@DoRoomObjBehavior:
-	stx Scratch+0 ; Object index for behavior call
-	lda RoomObjects, X
-	asl
-	tax
-	lda table_RoomObjBehavior, X
-	sta TmpPtr
-	lda table_RoomObjBehavior+1, X
-	sta TmpPtr+1
-	jmp (TmpPtr)
-	; rts handled by Object behavior
-	
-@RtsWithoutDoinNothin:
+@Done:
 	rts
 	
 .endproc

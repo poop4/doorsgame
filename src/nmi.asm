@@ -6,20 +6,20 @@
 .smart
 .include "system.inc"
 .include "nmi.inc"
+.include "prgm.inc" ;scratch
 
 .segment "ZEROPAGE"
-nmi_lock:		.res 1 ; prevents nmi re-entry
-nmi_count:		.res 1 ; simple counter
-nmi_status:		.res 1 ; 1 to push nmi, 2 to disable rendering on next
-nmt_update_len:	.res 1 ; bytes in nmt_update
+NMI_Status:		.res 1 ; 0 = skip, 1 = push nmi, 2 = disable rendering
+NMI_Lock:		.res 1 
+OAM_Index:		.res 1
+Nmt_Diaper:		.res 1
 ScrollY:		.res 1
 ScrollNt:		.res 1
 SpritesOn:		.res 1 ; whether to enable sprite rendering this frame
-oam_index:	.res 1	 ; oam curr index
 poop:			.res 1 ; temporary variable
 
 .segment "BSS"
-nmt_updateRAM: .res 256 ; nametable buffer
+NmtUpdateRAM: .res 256 ; nametable buffer
 paletteRAM:	.res 32  ; palette buffaire
 
 .segment "OAM"
@@ -34,26 +34,25 @@ nmi:
 	tya ; y
 	pha
 	; prevent reentry. 
-	lda nmi_lock
+	lda NMI_Lock
 	beq :+ ;if lock > 1
-	jmp @nmi_end
+	jmp @NMIend
 	:
 	; ok we good
 	lda #1
-	sta nmi_lock
-	inc nmi_count
+	sta NMI_Lock
 	; adjust next behavior based on status
-	lda nmi_status 
+	lda NMI_Status 
 	bne :+ ;if status == 0
-	jmp @nmi_end
+	jmp @NMIend
 	:
 	cmp #2
 	bne :+ ; status == 2 turns off rendering 
 	lda #%00000110
 	sta PPUMASK
 	ldx #0
-	stx nmi_status
-	jmp @nmi_end
+	stx NMI_Status
+	jmp @NMIend
 	:
 	; oam dma
 	lda #$00
@@ -62,7 +61,7 @@ nmi:
 	sta OAMDMA
 	; initialize oam list
 	lda #$00
-	sta oam_index
+	sta OAM_Index
 	; palettes
 	lda #%10010000
 	sta PPUCTRL
@@ -78,25 +77,41 @@ nmi:
 	inx
 	cpx #32
 	bne :-
-	; upd nmt
+	
+; Update nametable
+	lda Nmt_Diaper
+	beq @Scroll
 	ldx #0
-	cpx nmt_update_len
-	bcs @scroll ;if no new tiles, skip to next
-@nmt_update_loop:
-	lda nmt_updateRAM, x
-	sta PPUADDR
-	inx 
-	lda nmt_updateRAM, x
-	sta PPUADDR 
+@WriteNextAddr:
+; Lo
+	lda NmtUpdateRAM, X
+	sta $2006
 	inx
-	lda nmt_updateRAM, x
-	sta PPUDATA
+; Hi
+	lda NmtUpdateRAM, X
+	sta $2006
 	inx
-	cpx nmt_update_len
-	bcc @nmt_update_loop
-	lda #0
-	sta nmt_update_len ; done updating reset buffer
-@scroll:
+; Amt
+	lda NmtUpdateRAM, X
+	sta Scratch+0
+	inx
+; Str
+	ldy #0
+@WriteTileString:
+	lda NmtUpdateRAM, X
+	sta $2007
+	inx
+	iny
+	cpy Scratch+0
+	bne @WriteTileString
+; Loop term
+	cpx Nmt_Diaper
+	bne @WriteNextAddr
+; Reinit	
+	lda #$00
+	sta Nmt_Diaper
+	
+@Scroll:
 	lda #%10010000
 	ora ScrollNt
 	sta PPUCTRL ; nametable
@@ -112,12 +127,12 @@ nmi:
 	sta PPUMASK
 	; flag ppu update complete
 	lda #0
-	sta nmi_status
+	sta NMI_Status
 	; nmi over
-@nmi_end:
+@NMIend:
 	; unlock reentryflag
 	lda #0
-	sta nmi_lock
+	sta NMI_Lock
 	; restore registers
 	pla
 	tay ; y
@@ -138,29 +153,20 @@ nmi:
 ; runs until next nmi is complete
 ppu_update:
 	lda #1
-	sta nmi_status
+	sta NMI_Status
 	: 
-		lda nmi_status
+		lda NMI_Status
 		bne :-
 	rts
-	
-; use when you DONT want to update ppu! 
-; runs for one frame, then returns
-ppu_skip:
-	lda nmi_count
-	:
-		cmp nmi_count 
-		beq :-
-	rts
-	
+
 ; kills ppu 
 ; good time to write to raw ppu memory
-; (ppu_address_tile followed by shenanigans)
+; (PPU_AddressTile followed by shenanigans)
 ppu_off:
 	lda #2
-	sta nmi_status
+	sta NMI_Status
 	:
-		lda nmi_status
+		lda NMI_Status
 		bne :-
 	rts
 
@@ -169,7 +175,7 @@ ppu_off:
 ; ready for a PPUDATA write after calling this 
 ; y =  0- 31 nmt $2000, 32- 63 nmt $2400, 64- 95 nmt $2800, 96-127 nmt $2C00
 ; not for single tilewrites, more for full screens
-ppu_address_tile:
+PPU_OFF_AddressTile:
 	lda PPUSTATUS ; latch
 	tya ; memcpy
 	lsr
@@ -191,20 +197,19 @@ ppu_address_tile:
 	sta $2006 ; y + x
 	rts
 
-; updates a single tile on some nmt 
-; can be used with rendering on 
-; x/y: namesake | a: tileid
-ppu_update_tile:
-	pha ; temp a stack 
+; stores xy pair in next nmt diaper positions
+; Parameters: X/Y as tile pair
+; Returns: Y as nmt diaper
+PPU_ON_AddressTile:
 	txa 
 	pha ; temp x stack 
-	ldx nmt_update_len
+	ldx Nmt_Diaper
 	tya ; memcpy
 	lsr
 	lsr
 	lsr ; div4
 	ora #$20
-	sta nmt_updateRAM, x ; buffer hi 
+	sta NmtUpdateRAM, x ; buffer hi 
 	inx
 	tya
 	asl
@@ -216,11 +221,11 @@ ppu_update_tile:
 	; xcoord:
 	pla ; recover x from earlier
 	ora poop
-	sta nmt_updateRAM, x ; buffer lo
+	sta NmtUpdateRAM, x ; buffer lo
+
 	inx
-	; write tile
-	pla ; recover a (tile)
-	sta nmt_updateRAM, x
-	inx
-	stx nmt_update_len ; update buffersize 
+	stx Nmt_Diaper ; update buffersize 
+	txa
+	tay
+	
 	rts

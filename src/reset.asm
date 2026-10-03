@@ -4,12 +4,12 @@
 
 .include "system.inc"
 .include "reset.inc"
-.include "main.inc"
+.include "prgm.inc"
 .include "nmi.inc"
 
 .segment "CODE"
 reset:
-	sei 		; mask interrupts
+	sei 		; mask interrupoints_
 	cld 		; disable bcd
 	lda #0
 	sta PPUCTRL	; disable NMI

@@ -1,5 +1,5 @@
 ;
 ;
 
-.global DogsCreate
-.global HandleDogsEvents
+.global create_dogs
+.global handler_dogs_Behavior

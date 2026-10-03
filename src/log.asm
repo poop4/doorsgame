@@ -118,7 +118,7 @@
 ; TODO (overall)
 ; --room header in RAM; utility to read and build level off it
 ; --selector action: scan area of bg tiles around cursor and return 'hits'
-; --game state handler; initgame, titlescreen, initstage, gameplay, end
+; --game state handler; initgame, titlescreen, initscore, gameplay, end
 
 ; 7/1
 ; happy july
@@ -230,10 +230,10 @@
 ; and today i implemented:
 ; - basic RNG; seed in zp, 8bit galois
 ; - brainstorming dungeon room, getting overwhelmed
-; - implemented RoomObjects array, RoomBoxes array, and CreateRoomObject to 
+; - implemented objects array, RoomBoxes array, and create_object to 
 ;   handle initialization of both dynamically
 ;   now in DungeonLoad i should be able to generate IDs + XY offsets for room 
-;   objects and then call CreateRoomObject to shove them in the list each time
+;   objects and then call create_object to shove them in the list each time
 
 ; 7/28
 ; welp
@@ -244,17 +244,17 @@
 ; ok 
 ; ok
 ; WHEWWWWWWWWWW
-; FINALLY FINISHED CreateRoomObject for now
+; FINALLY FINISHED create_object for now
 ; (still need to add attribute code) SHUT up
 ; I'm so happy about it! Hmm ok, what to do next...
 ; Let's see, fairy should get a routine to interact (collide) with a room object
 ; Determine which object we're interacting with and change its state
-; Then send the object index to ChangeRoomObjState
-; ChangeRoomObjState should jump to the specific behavior needed per ID, then return 
+; Then send the object index to Changeobject_State
+; Changeobject_State should jump to the specific behavior needed per ID, then return 
 ; to frame processing 
 
 ; 7/31
-; wrote FairyCheckInteract
+; wrote fairy_CheckInteract
 ; runs collision for all in-dungeon objects, then changes state of hit object
 ; and runs its code via ID jump table hijinx
 ; THAT WAS FUN 
@@ -335,3 +335,80 @@
 ; gonna try writing down stuff that needs to happen, make a plan of action yk
 ; hopefully be back soon!
 
+; 9/8
+; hi i'm back, i've been doing well!
+; in the past week or so i have done:
+; - housekeeping! restructured a lot of dungeon oriented code
+; - finished up dogs events, they now open doors and retreat
+; - created score/score subsystem
+
+; 9/18
+; hi i'm back again, i was lying last time
+; i have been hitting the pen like 24/7 i have not been doing SHIT outside of
+; school and jerking off. kick fucking ass! life is pretty good sometimes
+; that being said i'm tired of being content with being bored, time to start
+; work on doorsgame again!
+; :stuff to work on before the heavy hitters make themselves apparent:
+; x finish relabeling of all game memory and subroutines
+; x refactor title screen state to use new button-read subsystem
+; x create first iteration of death state, formally closing gameloop
+; x TODO: fix esoteric dog posx bug
+; x TODO: rewrite opendoor draw routine to account for new method
+; o oh yeah should also write in all the missing fairy stuff lol
+; o and the roomobj attr code
+; sigh
+
+; 9/20 (midnight)
+; im tired i didnt do much yet
+; yesterday i finished up the relabeling business
+; and today i just did a quick little refactor of the title screen code
+; next up is implementing basic death and then fixing all those new bugs
+; goodnight
+
+; 9/21
+; 
+
+; 9/25
+; kinks have been worked out for the most part. i've not been in a good spot
+; at least for the past few days. aimless. delirious. barely hanging on
+; here's to a decent work session.
+;
+; 10/1 wait what did i do last friday again
+; oh yeah i closed the game loop and fixed that dog xpos bug lol
+; then uhhh i think on monday i fixed door drawing
+; i think that leaves us with no major bugs left?
+; ...
+; yeah!
+; also today is thursday for context
+; anyways now i've got the next ~3 hours to work !
+; :things i can do this session:
+;
+; o  (fairy.asm) handler for fairy and animation code
+; x  (score.asm) initializer and handler for scorepips
+; o  (dungeon_room.asm) initializer for puddles/deadthings
+; o  make cadavers.asm
+; o  make water.asm
+; o  (dungeon_room.asm) initialization for special room conditions
+; o  (dungeon_room.asm) the dreaded attribute assignment routine
+;
+; GOOD LUCK GIDDY
+
+; 10/2 technically
+; WHEWWWWWW GOOD JOB
+; score pips are mostly done!
+; just gotta do animations now andddd
+; o  fix that bug where a second opened door doesnt show piptiles
+; they look so good! i cant wait to see the finshed product
+; ...then after this is a lot of backend programming
+
+; 10/2 for really
+; sat down at ihop for a couple of hours and got scorepip handler done
+; was very fun! seemingly no bugs..? 
+; and the one i thought existed yesterday seems to have disappeared.
+; must investigate further. later. much later.
+; let's just put a tick out for it right now
+;
+; o  (score.asm(?cells.asm)) investigate score pip behavior
+;
+; welp just found out my ds lite got run through the wash
+; not a fun way to end the session......... i'm cross. oh well.

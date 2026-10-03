@@ -1,0 +1,6 @@
+;
+;
+;
+
+.global BirdsCreate
+.global HandleBirdsEvents

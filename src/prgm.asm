@@ -7,31 +7,34 @@
 .include "system.inc"
 .include "nmi.inc"
 .include "reset.inc"
-.include "main.inc"
+.include "prgm.inc"
 .include "buttons.inc"
-.include "title.inc"
-.include "dungeon.inc"
+.include "prgm_title.inc"
+.include "prgm_dungeon.inc"
+.include "prgm_death.inc"
 .include "rng.inc"
 .include "ppu_utility.inc"
 
 
 .segment "ZEROPAGE"
-Scratch:			.res 16
+Scratch:			.res 8
+DarkScratch:		.res 8
 PrgmMode:			.res 1 
 PrgmMode_Diaper:	.res 1
 PrgmModeState:		.res 1
 PrgmFramePtr:		.res 2 ; 
 TmpPtr:				.res 2
 TmpPtr2:			.res 2
-PrgmTimer:			.res 3 ; Universe age. Ends in ~3.23 days 
+PrgmTimer:			.res 3
+PrgmTimer_4f:		.res 1
+GenericTimer:		.res 1
 ButtonsTimer:		.res 1
-DoorsTimer:			.res 1 ; number of frames until we transition rooms or die
+NextRoomTimer:		.res 1 ; number of frames until we transition 
 NeedScroll:			.res 1
 
 ; _______________________________________________________________
 ; |																|
 ; |						Space and time							|
-; |_____________________________________________________________|
 ;																|
 .segment "CODE"
 main:
@@ -39,7 +42,7 @@ main:
 	lda #1
 	sta Seed
 	; set up to initialize title 
-	lda #MODE_DUNGEON
+	lda #MODE_TITLE
 	sta PrgmMode
 	lda #1
 	sta PrgmMode_Diaper ; set update flag
@@ -47,12 +50,15 @@ main:
 mainloop:
 ; Time moves forward
 	inc PrgmTimer
-	bcc :+
-	inc PrgmTimer+1
-	bcc :+
-	inc PrgmTimer+2
-:
 	
+	inc PrgmTimer_4f
+	lda PrgmTimer_4f
+	cmp #$04
+	bne :+
+	lda #$00
+	sta PrgmTimer_4f
+:
+
 ; Reach out to the divine
 	jsr ReadJoypad1
 	
@@ -64,9 +70,9 @@ mainloop:
 	inx
 	bne :-
 	
-	jsr UpdateCells
+	jsr handler_Cells
 	
-; Adorn the stage anew?
+; Adorn the score anew?
 	lda PrgmMode_Diaper
 	beq :+
 	lda #0
@@ -89,12 +95,11 @@ mainloop:
 ptr_table_PrgmMode_Load:
 .addr Title_Load
 .addr Dungeon_Load
+.word Death_Load
 ;.word Exit_Load
-;.word Death_Load
 
-; 
-;
-; 
+;															END |
+; ______________________________________________________________|
 
 irq:
 	rti

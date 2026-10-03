@@ -1,36 +1,33 @@
 ;
-; All code pertaining to the Beast system.
+; Beasts. (evil)
 ;
 .include "monsters.inc"			; [\__/]
-.include "system.inc"			;|      \
-.include "main.inc"				;   '  ' |
-.include "nmi.inc"				;  		  \
-.include "dungeon_room.inc"		;  /w  'T' |
-.include "rng.inc"				;  v ^VvvV^
-.include "ppu_utility.inc"		;   ^WwwwW\
-.debuginfo+						;  \______/
-.smart							; /
-
-; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+.include "prgm.inc"				;|      \
+.include "dungeon_room.inc"		;   '  ' |
+.include "ppu_utility.inc"		;  		  \
+.debuginfo+						;  /w  'T' |
+.smart							;  v ^VvvV^
+								;   ^WwwwW\
+								;  \______/
+								; /
 
 .segment "ZEROPAGE"
-DogsState:		.res 2 ; Beast info
-DogsTimer:		.res 2 ; In-animation counter
-DogsAnimState:	.res 2 ; Meta-animation counter
-DogsMomentum:	.res 2 ; Animation x-direction
+dogs_States:		.res 2 ; Beast info
+dogs_Timers:		.res 2 ; In-animation counter
+dogs_AnimStates:	.res 2 ; Meta-animation counter
+dogs_Momentum:	.res 2 ; Animation x-direction
 MarkedForDeath:	.res 1 ; Kill flag
 
 .segment "BSS"
-Dog0Cells:	.res 65
-Dog1Cells:	.res 65
+cells_dog0:	.res 65
+cells_dog1:	.res 65
 
-; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW|
+; _______________________________________________________________
 ;																|
 ; 						Summoning routine						| 
-; ______________________________________________________________|
 ; 																|
 .segment "CODE"
-.proc DogsCreate
+.proc create_dogs
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| Preparation
 ;																|
@@ -43,25 +40,26 @@ ArrangeBits := Scratch+5
 
 ; initialize all doggies
 	lda #0
-	sta DogsState
-	sta DogsState+1
+	sta dogs_States
+	sta dogs_States+1
 
 	sta ArrangeBits
 	
-	sta DogsTimer
-	sta DogsTimer+1
+	sta dogs_Timers
+	sta dogs_Timers+1
 
-	sta DogsAnimState
-	sta DogsAnimState+1
+	sta dogs_AnimStates
+	sta dogs_AnimStates+1
+	
+	sta MarkedForDeath
 
 	lda #1
-	sta DogsMomentum
-	sta DogsMomentum+1	
+	sta dogs_Momentum
+	sta dogs_Momentum+1	
 	
-
 	ldx #0
 :
-	sta Dog0Cells, X
+	sta cells_dog0, X
 	inx
 	cpx #(65+65)
 	bne :-
@@ -75,7 +73,7 @@ ArrangeBits := Scratch+5
 @b7and6:
 	asl
 	bcc :+
-	inc DogsState, X
+	inc dogs_States, X
 	inx
 :
 	iny
@@ -83,7 +81,7 @@ ArrangeBits := Scratch+5
 	bne @b7and6
 	
 ; Dogs arrange?
-	ldy DogsState+0
+	ldy dogs_States+0
 	beq @Cells
 	
 	; flag dungeon
@@ -123,13 +121,13 @@ ArrangeBits := Scratch+5
 	lda #(56+128)
 :
 	sta DogPosXList+0
-	lda DogsState+1
+	lda dogs_States+1
 	beq @Cells
 	lda #(56+64)
 	sta DogPosXList+1
 	jmp @Cells
 :
-	lda DogsState+1
+	lda dogs_States+1
 	bne :+
 	lda #56+64
 	sta DogPosXList+0
@@ -147,7 +145,7 @@ ArrangeBits := Scratch+5
 	sta DogIndex
 @DogsLoop:
 	ldy DogIndex
-	lda DogsState, Y
+	lda dogs_States, Y
 	; if no dog
 	beq @NextDog
 	
@@ -158,24 +156,24 @@ ArrangeBits := Scratch+5
 	tya
 	asl
 	tay
-	lda table_DogCellsPtrs, Y
+	lda ptr_table_cells_dogs, Y
 	sta DogCellsPtr
-	lda table_DogCellsPtrs+1, Y
+	lda ptr_table_cells_dogs+1, Y
 	sta DogCellsPtr+1
 	
 ; Go through cells list and add ptr to first open space
 	ldx #0
 :
-	lda CellsList, X
+	lda cells_Ptrs, X
 	beq :+
 	inx
 	inx
 	jmp :-
 :
 	lda DogCellsPtr
-	sta CellsList, X
+	sta cells_Ptrs, X
 	lda DogCellsPtr+1
-	sta CellsList+1, X
+	sta cells_Ptrs+1, X
 	
 	ldx #0
 	ldy #0	
@@ -191,7 +189,8 @@ ArrangeBits := Scratch+5
 	inx
 	iny
 	
-	lda #%00100001
+	; DEBUG NOTE: b5 this to toggle visibilty
+	lda #%00000001
 	sta (DogCellsPtr), Y
 	iny
 	
@@ -227,38 +226,37 @@ table_DogSp:
 
 .endproc
 
-table_DogCellsPtrs:
-.word Dog0Cells
-.word Dog1Cells
+ptr_table_cells_dogs:
+.word cells_dog0
+.word cells_dog1
 
 ;															END |
 ; ______________________________________________________________|
 
 
 
-; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW|
+; _______________________________________________________________
 ; |                                                             |
 ; |                      	The beast							|
-; |_____________________________________________________________|
 ;																|
 ; Updates every frame, plays continuous 'events' for lifespan
-.proc HandleDogsEvents
+.proc handler_dogs_Behavior
 DogsIndex := Scratch+0
 EventPtr := TmpPtr
 
 	lda #00
 	sta DogsIndex
 ;																|
-; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Life cycle
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Cycle
 ;																|
 @DogsLoop:
 	ldx DogsIndex
-	lda DogsState, X
+	lda dogs_States, X
 	asl	
 	tax
-	lda table_DogsEvents, X
+	lda table_dogs_Behaviors, X
 	sta EventPtr
-	lda table_DogsEvents+1, X
+	lda table_dogs_Behaviors+1, X
 	sta EventPtr+1
 	jsr trampoline
 
@@ -274,46 +272,46 @@ trampoline:
 	; whee!
 	jmp (EventPtr)
 
-table_DogsEvents:
-.word event_NoDoggy
-.word event_DogWait
-.word event_DogHunt
-.word event_DogRetreat
-.word event_DogKillYou
+table_dogs_Behaviors:
+.word dogs_Behavior_NA
+.word dogs_Behavior_Wait
+.word dogs_Behavior_Hunt
+.word dogs_Behavior_Retreat
+.word dogs_Behavior_KillYou
 
-event_NoDoggy:
+dogs_Behavior_NA:
 	rts
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| The beast, well humored, lies in wait
 ;																|
-event_DogWait:
-	lda DoorsTimer
+dogs_Behavior_Wait:
+	lda NextRoomTimer
 	beq @ThatDogDontHunt
 	
 	ldx DogsIndex
 	lda #2
-	sta DogsState, X
+	sta dogs_States, X
 	
 @ThatDogDontHunt:
 	rts
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| Seeing no other course, its prey tempts fate
 ;																|
-event_DogHunt:
-	; Setup sprite ptr 
+dogs_Behavior_Hunt:
+; Setup cells ptr 
 	ldx DogsIndex
 	txa
 	asl
 	tax
-	lda table_DogCellsPtrs, X
+	lda ptr_table_cells_dogs, X
 	sta TmpPtr2
-	lda table_DogCellsPtrs+1, X
+	lda ptr_table_cells_dogs+1, X
 	sta TmpPtr2+1
 
 ; Take a peek, doggy	
 
 	ldx DogsIndex
-	lda DogsAnimState, X
+	lda dogs_AnimStates, X
 	cmp #1
 	beq @PeekPt1
 	cmp #2
@@ -321,90 +319,169 @@ event_DogHunt:
 
 @PeekPt0:	
 ; Open your door, doggy!!
-	inc DogsTimer, X
-	lda DogsTimer, X
+	inc dogs_Timers, X
+	lda dogs_Timers, X
 	cmp #$40
-	bne @FrameEnd
+	bne @Done
 	lda #$00
-	sta DogsTimer, X
+	sta dogs_Timers, X
 	
 	ldx #0
 	ldy #3
 @DoorsLoop:
-	lda RoomObjBoxes_Right, X
+	lda object_Boxes_Right, X
 	cmp (TmpPtr2), Y
 	bcc :+
-	lda RoomObjBoxes_Left, X
+	lda object_Boxes_Left, X
 	cmp (TmpPtr2), Y	
 	bcc @Door
 :
 	inx
 	jmp @DoorsLoop
 @Door:
-	; Found the door.
-	; A successful hunt..?
-	lda RoomObjStates, X
+; Found the door.
+; A successful hunt..?
+	lda object_States, X
 	beq :+
-	; Door has already been opened. Lunchtime!
+	; Door has already been opened. Lunchtime soon!
 	lda #1
 	sta MarkedForDeath
+	; Next animation
 	ldx DogsIndex
-	inc DogsAnimState, X
-	jmp @FrameEnd
+	inc dogs_AnimStates, X
+	; Add to timer
+	lda NextRoomTimer
+	clc
+	adc #$80
+	sta NextRoomTimer
+	
+	jmp @Done
 :
-	inc RoomObjStates, X
-	stx Scratch+0 ; (parameter for objbehav)
-	jsr RoomObjBehavior_Door	
+	
+; Queue object
+	txa
+	jsr object_QueueBehavior
+	; next anim state
 	ldx DogsIndex
-	inc DogsAnimState, X
-	jmp @FrameEnd
+	inc dogs_AnimStates, X
+	jmp @Done
 
 @PeekPt1:
-	jsr anim_DogPeek_Paw
-	jmp @FrameEnd
+	jsr dogs_Anim_PeekPaw
+	jmp @Done
 	
 @PeekPt2:
 	lda #1
-	sta DogsMomentum, X
-	jsr anim_DogPeek_Body
+	sta dogs_Momentum, X
+	jsr dogs_Anim_PeekHead
 	
-	lda DogsAnimState, X
+	lda dogs_AnimStates, X
 	cmp #3
-	bne @FrameEnd
+	bne @Done
 
 ; Peek is over. Lunchtime?	
 	ldx DogsIndex
-	lda #3
+	lda #$03
 	clc
 	adc MarkedForDeath
-	sta DogsState, X
+	sta dogs_States, X
+	; Reset animation flags
+	lda #$00
+	sta dogs_AnimStates
+	sta dogs_AnimStates+1
+	; Set a timer in case we're death
+	lda MarkedForDeath
+	beq @Done
+	lda #$80
+	sta dogs_Timers
 
-@FrameEnd:
-	
+@Done:
 	rts
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| The beast finds nothing to kill, and retreats
 ;																|
-event_DogRetreat:
+dogs_Behavior_Retreat:
+	; Setup sprite ptr 
+	ldx DogsIndex
+	txa
+	asl
+	tax
+	lda ptr_table_cells_dogs, X
+	sta TmpPtr2
+	lda ptr_table_cells_dogs+1, X
+	sta TmpPtr2+1
 
-	; TODO this
+; Take five, doggy	
+
+	ldx DogsIndex
+	lda dogs_AnimStates, X
+	bne @HidePt1
+
+@HidePt0:
+; Wait a sec
+	inc dogs_Timers, X
+	lda dogs_Timers, X
+	cmp #32
+	bne @Done
+
+; Initialize retreat animation
+	inc dogs_AnimStates, X
+	lda #13
+	sta dogs_Timers, X
+	lda #$FF
+	sta dogs_Momentum, X
+	jmp @Done
+	
+@HidePt1:
+	dec dogs_Timers, X
+	dec dogs_Timers, X
+	jsr dogs_Anim_PeekHead
+	
+	lda dogs_AnimStates, X
+	cmp #2
+	bne @Done
+	
+; Done hiding
+	
+; Hide paw
+	ldy #(14*4)
+	lda #$FF
+	sta (TmpPtr2), Y
+	ldy #(15*4)
+	sta (TmpPtr2), Y
+; Kill doggy
+	lda #0
+	sta dogs_States, X
+	
+@Done:
 	rts	
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| The beast takes its trophy, and trial completes
 ;																|
-event_DogKillYou:
-
-	;TODO
+dogs_Behavior_KillYou:
+; wait a tick
+	dec dogs_Timers
+	bne @Done
+	
+; change mode and fill diaper
+	lda #MODE_DEATH
+	sta PrgmMode
+	
+	lda #1
+	sta PrgmMode_Diaper
+	
+@Done:
 	rts
-
-
-anim_DogPeek_Paw:
+;																|
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Animations
+;																|
+dogs_Anim_PeekPaw:
 	ldy #(14*4+3) ; initial paw cell 
 @PeekLoop:
 ; Move the dog's paw forward 18 steps, stop for 6, then backward for another 6. Then stop.
 	lda (TmpPtr2), Y
 	clc
-	adc DogsMomentum, X
+	adc dogs_Momentum, X
 	sta (TmpPtr2), Y
 	iny
 	iny
@@ -414,8 +491,8 @@ anim_DogPeek_Paw:
 	bne @PeekLoop
 	
 	ldx DogsIndex
-	inc DogsTimer, X
-	lda DogsTimer, X
+	inc dogs_Timers, X
+	lda dogs_Timers, X
 	cmp #18
 	bne :+
 	
@@ -427,44 +504,44 @@ anim_DogPeek_Paw:
 	
 	; Stop motion
 	lda #$00
-	sta DogsMomentum, X
-	jmp @FrameEnd
+	sta dogs_Momentum, X
+	jmp @Done
 	
 :
 	cmp #23
 	bne :+
 	
 	lda #$FF
-	sta DogsMomentum, X
+	sta dogs_Momentum, X
 :
 	cmp #28
 	bne :+
 
 	lda #$00
-	sta DogsMomentum,X
+	sta dogs_Momentum,X
 :	
 	cmp #33
-	bne @FrameEnd
+	bne @Done
 	
 	ldx DogsIndex
 	lda #0
-	sta DogsTimer, X
-	inc DogsAnimState, X
+	sta dogs_Timers, X
+	inc dogs_AnimStates, X
 
-@FrameEnd:
+@Done:
 
 	rts
 
 
 
-anim_DogPeek_Body:
+dogs_Anim_PeekHead:
 
 	ldy #3
 @PeekLoop:
 ; Move the dog forward 13 steps total
 	lda (TmpPtr2), Y
 	clc
-	adc DogsMomentum, X
+	adc dogs_Momentum, X
 	sta (TmpPtr2), Y
 	iny
 	iny
@@ -474,8 +551,13 @@ anim_DogPeek_Body:
 	bne @PeekLoop
 	
 	ldx DogsIndex
-	inc DogsTimer, X
-	lda DogsTimer, X
+; Inc timer
+	inc dogs_Timers, X
+	lda dogs_Timers, X
+	bne :+
+	inc dogs_AnimStates, X
+	jmp @Done 
+:
 ; Conditional chain, flip sprite priority
 	cmp #4
 	bne :+	
@@ -501,12 +583,12 @@ anim_DogPeek_Body:
 
 :
 	cmp #13
-	bne @FrameEnd
+	bne @Done
 	
 	lda #0
-	sta DogsTimer, X
-	inc DogsAnimState, X
-	jmp @FrameEnd
+	sta dogs_Timers, X
+	inc dogs_AnimStates, X
+	jmp @Done
 
 @SpriteColumnOverBG:
 	lda (TmpPtr2), Y
@@ -521,7 +603,7 @@ anim_DogPeek_Body:
 	dex
 	bne @SpriteColumnOverBG
 	
-@FrameEnd:
+@Done:
 
 	rts
 

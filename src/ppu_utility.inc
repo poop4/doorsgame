@@ -1,10 +1,10 @@
 ; memory
 
-.global CellsList
+.global cells_Ptrs
 
 ; subroutines
 
-.global UpdateCells
+.global handler_Cells
 .global bgSetup
 .global bgDrawStripeY
 .global bgDrawStripeX

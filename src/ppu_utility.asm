@@ -6,39 +6,40 @@
 .debuginfo+
 .include "ppu_utility.inc"
 .include "system.inc"
-.include "main.inc"
+.include "prgm.inc"
 .include "nmi.inc"
 
 ; Sprite object constructor
 .segment "ZEROPAGE"
-CellsIndex:		.res 1
+cells_Index:		.res 1
 
 .segment "BSS"
-CellsList:		.res 16
+cells_Ptrs:		.res 16
+
 
 .segment "CODE"
 ; stores objects in cell list to oam and updates index
-.proc UpdateCells
+.proc handler_Cells
 CellsPtr := TmpPtr
 
 	lda #0
-	sta CellsIndex
+	sta cells_Index
 	sta CellsPtr
 	sta CellsPtr+1
 	
 @LoadNextCells:
 ; Initialize CellsPtr to next slot
 ; End the subroutine when we hit an empty slot
-	lda CellsIndex
+	lda cells_Index
 	asl
 	tax
-	lda CellsList, X
+	lda cells_Ptrs, X
 	sta CellsPtr
-	lda CellsList+1, X
+	lda cells_Ptrs+1, X
 	beq @CellsNoMore
 	sta CellsPtr+1
 
-	ldx oam_index
+	ldx OAM_Index
 	ldy #0
 @UpdateOAM:
 	lda (CellsPtr), Y
@@ -52,15 +53,17 @@ CellsPtr := TmpPtr
 @CellsComplete:
 	txa
 	clc
-	adc oam_index
-	sta oam_index
-	inc CellsIndex
+	adc OAM_Index
+	sta OAM_Index
+	inc cells_Index
 	jmp @LoadNextCells
 	
 @CellsNoMore:
 	rts
 .endproc
-
+;																|
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __|
+;																|
 ; generic utility for zeroing nametable rams
 ; a: namtable id ($20 or $28)
 bgSetup:

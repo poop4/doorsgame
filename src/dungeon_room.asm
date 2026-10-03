@@ -5,10 +5,11 @@
 .smart
 .include "dungeon_room.inc"
 .include "system.inc"
-.include "main.inc"
+.include "prgm.inc"
 .include "nmi.inc"
 .include "rng.inc"
-.include "monsters.inc"
+.include "ppu_utility.inc"
+.include "score.inc"
 
 .segment "ZEROPAGE"
 ; local RNG for current room
@@ -22,24 +23,23 @@ DungeonInfo:			.res 1
 
 .segment "BSS"
 ; list of indices, used as offsets and to signify object IDs. init as FF
-RoomObjects: 	.res 16
+objects: 	.res 16
 ; 4 bytes each, holds collision info for room objects
-RoomObjBoxes_Left:		.res 16
-RoomObjBoxes_Top:		.res 16
-RoomObjBoxes_Right:		.res 16
-RoomObjBoxes_Bottom:	.res 16
+object_Boxes_Left:		.res 16
+object_Boxes_Top:		.res 16
+object_Boxes_Right:		.res 16
+object_Boxes_Bottom:	.res 16
 ; default 0, modified on interaction
-RoomObjStates:	.res 16
+object_States:	.res 16
 ; index for queued behaviors. init as FF
-RoomObjBehaviorQueue: .res 4
+object_BehaviorQueue: .res 8
 
-; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW|
+; _______________________________________________________________
 ; 																|
-; 			A new world	borne of chance replaces the old		|
-; ______________________________________________________________|
+; 		A new world in place of where the old one had been		|
 ; 																|
 .segment "CODE"
-.proc GenerateRoom
+.proc create_Room
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Clear room objects
 ;																|
@@ -48,7 +48,7 @@ ScreenY := Scratch+1
 NtHi := Scratch+2
 NtLo := Scratch+3
 RandomBits := Scratch+4
-ToggleFloor := Scratch+5
+toggle_Floor := Scratch+5
 
 ; Initialize room obj 
 	lda #%0
@@ -57,17 +57,17 @@ ToggleFloor := Scratch+5
 	ldx #0
 @ClearRoomLoop:
 	lda #$FF 
-	sta RoomObjects, X
-	cpx #$04
+	sta objects, X
+	cpx #$08
 	bcs :+
-	sta RoomObjBehaviorQueue, X
+	sta object_BehaviorQueue, X
 :
 	lda #$00
-	sta RoomObjStates, X
-	sta RoomObjBoxes_Left, X
-	sta RoomObjBoxes_Top, X
-	sta RoomObjBoxes_Right, X
-	sta RoomObjBoxes_Bottom, X
+	sta object_States, X
+	sta object_Boxes_Left, X
+	sta object_Boxes_Top, X
+	sta object_Boxes_Right, X
+	sta object_Boxes_Bottom, X
 	inx
 	cpx #$10
 	bne @ClearRoomLoop
@@ -84,7 +84,7 @@ ToggleFloor := Scratch+5
 	lda #$42
 	sta NtLo
 	lda #0
-	sta ToggleFloor
+	sta toggle_Floor
 @RowLoop:
 ; Loop termination?
 	lda NtHi
@@ -120,7 +120,7 @@ ToggleFloor := Scratch+5
 	lda NtLo
 	cmp #$62
 	bne @DrawRow
-	inc ToggleFloor
+	inc toggle_Floor
 @DrawRow:
 ; Copy seed over for reading
 	lda RoomSeed
@@ -137,12 +137,12 @@ ToggleFloor := Scratch+5
 	beq :+
 	lda #$FE
 	clc
-	adc ToggleFloor
+	adc toggle_Floor
 	jmp @DrawByte
 :
 	lda #$4E
 	clc
-	adc ToggleFloor
+	adc toggle_Floor
 @DrawByte:
 	sta PPUDATA
 	lda RandomBits
@@ -164,17 +164,17 @@ ToggleFloor := Scratch+5
 	lda #OBJ_DOOR
 	ldx #6
 	ldy #4
-	jsr CreateRoomObject
+	jsr create_object
 	lda #OBJ_DOOR
 	ldx #14
 	ldy #4
-	jsr CreateRoomObject
+	jsr create_object
 	lda #OBJ_DOOR
 	ldx #22
 	ldy #4
-	jsr CreateRoomObject
+	jsr create_object
 ;																|
-; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| 
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Seed gen
 ;																|
 ; Clock rng and store room seed for random selection processes
 	lda Seed
@@ -184,21 +184,48 @@ ToggleFloor := Scratch+5
 	
 ; TODO more room generation procedures
 
+
+
+
+;																|
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Finally, walls 
+;																|	
+; Side walls
+	lda #$FE
+	ldy #$00
+	jsr bgDrawStripeY
+	lda #$51
+	iny
+	jsr bgDrawStripeY
+	lda #$52
+	ldy #$1E
+	jsr bgDrawStripeY
+	lda #$FE
+	iny
+	jsr bgDrawStripeY
+; Top wall
+	lda #$FE
+	ldy #$00
+	jsr bgDrawStripeX
+	lda #$50
+	ldy #$01
+	jsr bgDrawStripeX
+
+
 	rts
 .endproc
 ;                                                           END |
 ; ______________________________________________________________|
 
 
-; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW|
+; _______________________________________________________________
 ;																|
 ;							Furnishing							|
-;_______________________________________________________________|
 ;																|
 ; Room object initialization routine
 ; DO NOT USE WITH RENDERING ON
 ; Parameters: A = object ID, |  X, Y = tile coordinate offsets
-.proc CreateRoomObject
+.proc create_object
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Create basic object
 ;																|
@@ -223,38 +250,38 @@ TilesRow := Scratch+3
 	sta ScreenY
 	ldx #0
 @SearchObjList:
-	lda RoomObjects, X
+	lda objects, X
 	cmp #$FF ; signifies unused slot
 	beq @WriteObjID
 	inx
 	jmp @SearchObjList
 @WriteObjID:
 	lda ObjectID
-	sta RoomObjects, X
+	sta objects, X
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Object box
 ;																|
 ; Write object box
 	; left 
-	lda table_RoomObjBoxes + LEFT
+	lda table_object_Boxes + LEFT
 	clc
 	adc ScreenX ; tile coordinate offset
-	sta RoomObjBoxes_Left, X
+	sta object_Boxes_Left, X
 	; top
-	lda table_RoomObjBoxes + TOP
+	lda table_object_Boxes + TOP
 	clc
 	adc ScreenY
-	sta RoomObjBoxes_Top, X
+	sta object_Boxes_Top, X
 	; right
-	lda table_RoomObjBoxes + RIGHT
+	lda table_object_Boxes + RIGHT
 	clc
 	adc ScreenX
-	sta RoomObjBoxes_Right, X
+	sta object_Boxes_Right, X
 	; bottom
-	lda table_RoomObjBoxes + BOTTOM
+	lda table_object_Boxes + BOTTOM
 	clc
 	adc ScreenY
-	sta RoomObjBoxes_Bottom, X
+	sta object_Boxes_Bottom, X
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Tiledraw loop
 ;																|
@@ -277,15 +304,15 @@ TilesRow := Scratch+3
 	sta ScreenY
 :
 	ldy ScreenY
-	jsr ppu_address_tile
+	jsr PPU_OFF_AddressTile
 	; now ready for PPUDATA writes
 ; Set TileTblPtr based on ID
 	lda ObjectID
 	asl
 	tax
-	lda table_RoomObjTiles, X
+	lda table_object_tileROM, X
 	sta TileTblPtr
-	lda table_RoomObjTiles+1, X
+	lda table_object_tileROM+1, X
 	sta TileTblPtr+1
 ; Compute row width by grabbing from boundsbox
 	lda ObjectID
@@ -294,7 +321,7 @@ TilesRow := Scratch+3
 	clc
 	adc #$02
 	tax
-	lda table_RoomObjBoxes, X
+	lda table_object_Boxes, X
 	ror
 	ror
 	ror
@@ -317,7 +344,7 @@ TilesRow := Scratch+3
 	ldx ScreenX
 	inc ScreenY
 	ldy ScreenY
-	jsr ppu_address_tile
+	jsr PPU_OFF_AddressTile
 	pla
 	tay ; pop Y off stack
 	ldx #0
@@ -329,7 +356,7 @@ TilesRow := Scratch+3
 
 
 .segment "RODATA"
-table_RoomObjBoxes:
+table_object_Boxes:
 ; ID 0, doors
 .byte 00 ; LEFT
 .byte 00 ; TOP
@@ -346,16 +373,20 @@ table_RoomObjBoxes:
 .byte 224
 .byte 8
 ; ID 3, Puddle
-
+.byte 00
+.byte 00
+.byte 80
+.byte 24
 ; ID 4, DeadThing
 
 
-table_RoomObjTiles:
-.word table_DoorTiles
-.word table_DuererTiles
-.word table_SubtitleTiles
+table_object_tileROM:
+.word table_tileROM_Door
+.word table_tileROM_Duerer
+.word table_tileROM_Subtitle
+.word table_tileROM_Puddle
 ; ID 0, doors 
-table_DoorTiles:
+table_tileROM_Door:
 .byte $24,$25,$25,$26
 .byte $27,$28,$29,$2A
 .byte $2B,$2C,$2D,$2A
@@ -363,51 +394,109 @@ table_DoorTiles:
 .byte $32,$33,$34,$2A
 .byte $35,$36,$37,$2A, $FF
 ; ID 1, Title
-table_DuererTiles:
+table_tileROM_Duerer:
 .byte $53,$FD, $53,$FD, $53,$FD, $53,$54, $53,$FD, $53,$54
 .byte $55,$FD, $56,$FD, $55,$FD, $55,$57, $55,$FD, $55,$57, $FF
 ; ID 2, Subtitle
-table_SubtitleTiles:
+table_tileROM_Subtitle:
 .byte _P,_R,_I,_S,_O,_N,__,_O,_F,__,_E,_T,_E,_R,_N,_A,_L,__,_D,_I,_C,_E,__,_R,_O,_L,_L, $FF
+; ID 3, Puddle
+table_tileROM_Puddle:
+.byte $FD,$FD,$FE,$FE,$FE,$FE,$FE,$FE,$FE,$FD
+.byte $FE,$FE,$FE,$FE,$FE,$FE,$FE,$FE,$FE,$FE
+.byte $FD,$FE,$FE,$FE,$FE,$FE,$FE,$FE,$FD,$FD,$FF
 
 .endproc
 ;                                                           END |
 ; ______________________________________________________________|
 
 
-; WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW|
+; _______________________________________________________________
 ;                                                           	|
 ; 					Furnishing's function						|
-; ______________________________________________________________|
 ;                                                           	|
+; A: Room obj index
+object_QueueBehavior:
+	
+	ldx #0
+:
+	ldy object_BehaviorQueue, X
+	inx
+	cpy #$FF
+	bne :-
+	
+	dex
+	sta object_BehaviorQueue, X
+
+	rts
+
+
 ; Intended to be used during dungeon frame routine
-; Checks for 'queued' roomobj events and executes one per frame
-.proc UpdateRoomObjBehavior
+; Checks for 'queued' object_ events and executes one per frame
+.proc handler_object_Behavior
 
-; TODO this
+; 'Queued' room object is an index to room object list
+	ldx #0
+@CheckQueue:
+	lda object_BehaviorQueue, X
+	inx
+	cpx #8 ; gone thru full queue?
+	beq @Done
+	cmp #$FF
+	beq @CheckQueue
+	; Clear queued item
+	dex
+	tay
+	lda #$FF
+	sta object_BehaviorQueue, X
 
+; A = Room object index
+	tya
+	tax
+	inc object_States, X
+
+; Do object's behavior
+	stx Scratch+0 ; Object index for behavior call
+	lda objects, X
+	asl
+	tax
+	lda table_object_Behavior, X
+	sta TmpPtr
+	lda table_object_Behavior+1, X
+	sta TmpPtr+1
+	jmp (TmpPtr)
+	; rts handled by Object behavior
+
+@Done:
 
 	rts
 
 .endproc
 
 ; Object behavior
-table_RoomObjBehavior:
-.word RoomObjBehavior_Door
-.word RoomObjBehavior_Duerer
-.word RoomObjBehavior_Duerer
+table_object_Behavior:
+.word object_Behavior_Door
+.word object_Behavior_Duerer
+.word object_Behavior_Duerer
+.word object_Behavior_Puddle
 
+;																|
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __|
+;																|
 ;ID 0, doors
-RoomObjBehavior_Door:
+object_Behavior_Door:
+
 ObjectIndex := Scratch+0
 RowStartX := Scratch+1
 RowEndX := Scratch+2
 RowEndY := Scratch+3
 RowCurrX := Scratch+4
 TmpX := Scratch+5
-; Grab and initialize XY tile values
+TmpY := Scratch+6
+
+; Initialize XY tilevals
 	ldx ObjectIndex
-	lda RoomObjBoxes_Left, X
+	lda object_Boxes_Left, X
 	ror
 	ror
 	ror
@@ -416,7 +505,7 @@ TmpX := Scratch+5
 	clc
 	adc #$04
 	sta RowEndX
-	lda RoomObjBoxes_Top, X
+	lda object_Boxes_Top, X
 	ror
 	ror
 	ror
@@ -429,46 +518,79 @@ TmpX := Scratch+5
 	clc
 	adc #$08
 	sta RowEndY
-; Loop initialization
-	ldx #00
-@OpenDoorTilesLoop:
-	lda table_OpenDoorTiles, X
-	stx TmpX
-	ldx RowCurrX
-	jsr ppu_update_tile
 	
-	inc RowCurrX
-	ldx RowCurrX
-	cpx RowEndX
-	bne :+
-	lda RowStartX
-	sta RowCurrX
+; Write door tiles
+	ldx #00
+	stx TmpX
+	sty TmpY
+@OpenDoorTilesLoop:
+	ldx RowStartX
+	jsr PPU_ON_AddressTile
+	
+; Y = nmt diaper
+; now write row width and tile string
+	lda #$04
+	sta NmtUpdateRAM, Y
 	iny
-	cpy RowEndY
-	beq @TilesLoopEnd
-:
+	
 	ldx TmpX
+	
+	lda table_tileROM_OpenDoor, X
+	sta NmtUpdateRAM, Y
 	inx
-	jmp @OpenDoorTilesLoop
-@TilesLoopEnd:
+	iny
+	
+	lda table_tileROM_OpenDoor, X
+	sta NmtUpdateRAM, Y
+	inx
+	iny
+	
+	lda table_tileROM_OpenDoor, X
+	sta NmtUpdateRAM, Y
+	inx
+	iny
+	
+	lda table_tileROM_OpenDoor, X
+	sta NmtUpdateRAM, Y
+	inx
+	iny
+	
+	stx TmpX
+	sty Nmt_Diaper
+	
+	ldy TmpY
+	iny
+	sty TmpY
+	cpy RowEndY
+	bne @OpenDoorTilesLoop
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __|
 ;																|
 ; Set doors timer
-	lda DungeonInfo
-	and #%00000001; Dogs?
-	beq :+
-	lda #(64+34+16)+8+(34+16+64)
-	jmp :++
-:
 	lda #64+64
-:
-	sta DoorsTimer
+	sta NextRoomTimer	
+	
+; Award points
+	lda points
+	clc
+	adc points_PerDoor
+	sta points
+	
+; Create scorpip
+	; Setup parameters
+	ldx ObjectIndex
+	lda object_Boxes_Top, X
+	tay
+	lda object_Boxes_Left, X
+	tax
+	lda points_PerDoor
+	
+	jsr create_scorePip
 	
 	
 	rts
 
-table_OpenDoorTiles:
+table_tileROM_OpenDoor:
 .byte $38,$39,$3A,$3B
 .byte $3C,$3D,$3E,$3F
 .byte $40,$41,$42,$3F
@@ -478,7 +600,11 @@ table_OpenDoorTiles:
 .byte $4B,$4C,$4D,$FF
 .byte $FF,$FF,$FF,$FF
 
-RoomObjBehavior_Duerer:
+object_Behavior_Duerer:
+
+	rts
+	
+object_Behavior_Puddle:
 
 	rts
 
@@ -492,7 +618,7 @@ RoomObjBehavior_Duerer:
 
 dungeon_palette: 
 ; bg
-.byte $2D,$00,$0F,$0F ; Floor ceiling 
+.byte $2D,$00,$0F,$32 ; Floor ceiling score
 .byte $2D,$07,$00,$17 ; Doors
 .byte $2D,$00,$00,$00
 .byte $2D,$00,$00,$00
@@ -500,5 +626,5 @@ dungeon_palette:
 .byte $2D,$18,$28,$38 ; Fairy
 .byte $2D,$0F,$06,$38 ; Doggies
 .byte $2D,$00,$00,$00
-.byte $2D,$00,$00,$00
+.byte $2D,$00,$00,$32
 

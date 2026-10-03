@@ -4,29 +4,46 @@
 
 .debuginfo+
 .smart
-.include "system.inc"
+.include "prgm_title.inc"
 .include "nmi.inc"
-.include "main.inc"
+.include "prgm.inc"
 .include "buttons.inc"
 .include "ppu_utility.inc"
-.include "title.inc"
-.include "dungeon.inc"
-.include "dungeon_room.inc"
+.include "prgm_dungeon.inc"
+.include "dungeon_room.inc" ; for titlescreen grafix
 .include "fairy.inc"
 .include "rng.inc"
+.include "score.inc"
 
 .segment "ZEROPAGE"
 TitleMenuIndex:		.res 1
 
 .segment "BSS"
-TitleCells:		.res 49
+cells_TitleGraphix:		.res 49
 
-
+; _______________________________________________________________
+; 																|
+; 					Introduction initialization					|
+;																|
 .segment "CODE"
 Title_Load:
+; Clear game progress
+	lda #0
+	sta points
+	sta score
+	sta score+1
+	sta stage
+	; reset roomtimer so we don't transition accidentally
+	lda #0
+	sta NextRoomTimer
+; Disable early buttonpress
+	lda #$40
+	sta ButtonsTimer
+
+; Disable rendering 
 	jsr ppu_off
 	
-	; load title palette
+; Upload palette
 	ldx #0
 	:
 	lda title_palette, x
@@ -50,7 +67,7 @@ Title_Load:
 	ldx #0
 @ClearRoomLoop:
 	lda #$FF 
-	sta RoomObjects, X
+	sta objects, X
 	inx
 	cpx #$10
 	bne @ClearRoomLoop
@@ -59,12 +76,12 @@ Title_Load:
 	lda #OBJ_DUERER
 	ldx #2
 	ldy #4
-	jsr CreateRoomObject
+	jsr create_object
 	
 	lda #OBJ_SUBTITLE
 	ldx #2
 	ldy #7
-	jsr CreateRoomObject
+	jsr create_object
 		
 ; Title Sprites
 ; Store cells
@@ -72,53 +89,117 @@ Title_Load:
 	ldy #0
 :
 	lda table_DuererSp, X
-	sta TitleCells, Y
+	sta cells_TitleGraphix, Y
 	inx
 	iny
 	cpx #48
 	bne :-
 	lda #$FF
-	sta TitleCells, Y
+	sta cells_TitleGraphix, Y
 	
 ; Clear list, then add cells to list
 	ldx #0
 :
 	lda #0
-	sta CellsList, X
+	sta cells_Ptrs, X
 	inx
 	cpx #$10
 	bne :-
 	
-	lda #<TitleCells
-	sta CellsList
-	lda #>TitleCells
-	sta CellsList+1
-	
+	lda #<cells_TitleGraphix
+	sta cells_Ptrs
+	lda #>cells_TitleGraphix
+	sta cells_Ptrs+1
 	
 	; 'copyright'
 	; menu options	
 	;
-
+	
+	; TODO here clear nt1 and write roomid to it
+	
+;																|
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __|
+;																|
 	lda #<Title_Frame
 	sta PrgmFramePtr
 	lda #>Title_Frame
 	sta PrgmFramePtr+1
 	
 	jmp (PrgmFramePtr)
-	
+; 															END |
+; ______________________________________________________________|
 
+
+; _______________________________________________________________
+; 																|
+;				blablabslbskjdsh titleframe	poop				|
+; 																|
 Title_Frame:
-; Scroll if necessitated (and delay dungeon start)
+; Scroll first
 	lda NeedScroll
-	beq @DoFrame
+	beq @Buttons
+	
+	jsr Title_Scroll
+
+@Buttons:
+; check buttons
+	lda #PAD_START
+	jsr CheckButtons
+	beq @HandleSelect
+
+; Check pressed index
+	lda TitleMenuIndex
+	cmp #TITLE_START
+	bne @NotDungeon
+
+; We dungeon, queue scroll for next frames 
+	lda #1
+	sta NeedScroll
+	jmp @StdFrame
+
+@NotDungeon:
+	; TODO: handle other sub title states, eventually
+	
+@HandleSelect:
+	lda #PAD_SELECT
+	jsr CheckButtons
+	beq @StdFrame
+	
+	; cycle menu options 
+	lda TitleMenuIndex
+	cmp #TITLE_HINTS 
+	beq @Wraparound
+	
+	inc TitleMenuIndex
+	jmp @StdFrame
+
+@Wraparound:
+	lda #TITLE_START
+	sta TitleMenuIndex
+	
+@StdFrame:
+	; bueines as usual.	
+	; cycle seed
+	inc Seed
+	
+	; draw any sprites
+	jsr handler_Cells
+	
+; Wait out frame and report to program
+	jsr ppu_update
+	
+	jmp mainloop
+
+
+Title_Scroll:	
 	lda ScrollY
 	clc
-	adc #$02
+	adc #$10
 	sta ScrollY
 ; Have we rolled down to NT2?
 	cmp #$EF
-	bcc @StillScrolling
-; Set scroll to 0 and take me to the DUNGEON
+	bcc @Done
+; Set scroll to 0 and take me to the DUNGEON!!!!!!!!!!!!!!!!!!!
 	lda #0
 	sta ScrollY
 	lda #2
@@ -130,64 +211,10 @@ Title_Frame:
 	lda #1
 	sta PrgmMode_Diaper
 	lda #120
-	sta CursorX
-@StillScrolling:
-	jmp @NoTimer
-@DoFrame:
-	; check buttons
-	lda Buttons
-	and #PAD_START
-	beq @HandleSelect
-	lda TitleMenuIndex
-	cmp #TITLE_START
-	bne @NotDungeon
-
-; We dungeon, queue scroll for next frames 
-	lda #1
-	sta NeedScroll
-	jmp @NoTimer ; we done, jump 
-
-@NotDungeon:
-	; TODO: handle other sub title states, eventually
-@HandleSelect:
-	lda ButtonsTimer
-	; if timer is nonzero we wait
-	bne @HandleSelectTimer
-
-	; no timer we ball
-	lda Buttons
-	and #PAD_SELECT
-	beq @HandleSelectTimer
-	; cycle menu options 
-	lda TitleMenuIndex
-	cmp #TITLE_HINTS 
-	beq @Wraparound
-	inc TitleMenuIndex
-	jmp @SetTimer
-
-@Wraparound:
-	lda #TITLE_START
-	sta TitleMenuIndex
+	sta fairy_X
 	
-@SetTimer:
-	lda #30
-	sta ButtonsTimer
-	
-@HandleSelectTimer:
-	lda ButtonsTimer
-	beq @NoTimer
-	dec ButtonsTimer
-	
-@NoTimer:
-	; bueines as usual.	
-	; cycle seed
-	inc Seed
-	
-	; draw any sprites
-	jsr UpdateCells
-	
-	jsr ppu_update
-	jmp mainloop
+@Done:
+	rts
 
 	
 ; Tables
