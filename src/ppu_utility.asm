@@ -1,5 +1,5 @@
 ;
-; Generic background and sprite draw utilities
+; Generic graphics utilities
 ;
 
 .smart
@@ -9,13 +9,73 @@
 .include "prgm.inc"
 .include "nmi.inc"
 
-; Sprite object constructor
+; _______________________________________________________________
+;																|
+;						Text parser								|
+;																|
+.segment "CODE"
+; Parameters:
+; x/y: tile coordinates
+; TmpPtr: address of text string
+.proc create_TextString
+StringPtr := TmpPtr
+DiaperVal := Scratch+0 ;nmtbuffer
+
+; Store requested xy in nmtbuffer
+	jsr PPU_ON_AddressTile
+	; y = Nmt_Diaper
+	sty DiaperVal
+	
+	ldy #0
+; Count num tiles in string until terminator
+@CountTiles:
+	lda (StringPtr), Y
+	cmp #$FF
+	beq :+
+	iny
+	jmp @CountTiles
+	
+:
+; Store strlen in buffer
+	ldx DiaperVal
+	tya
+	sta NmtUpdateRAM, X
+	inx
+	
+	ldy #0
+; Store string tiles in buffer
+@WriteStringLoop:
+	lda (StringPtr), Y
+	cmp #$FF
+	beq :+
+	sta NmtUpdateRAM, X
+	iny
+	inx
+	jmp @WriteStringLoop
+:
+	; Fill diaper
+	stx Nmt_Diaper
+; All done!
+	
+	rts
+
+.endproc
+;															END |
+; ______________________________________________________________|
+
+
+; _______________________________________________________________
+; 																|
+; 					Sprite object handling						|
+;																|
 .segment "ZEROPAGE"
 cells_Index:		.res 1
 
 .segment "BSS"
 cells_Ptrs:		.res 16
-
+;																|
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __|
+;																|
 
 .segment "CODE"
 ; stores objects in cell list to oam and updates index
@@ -61,8 +121,13 @@ CellsPtr := TmpPtr
 @CellsNoMore:
 	rts
 .endproc
-;																|
-; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __|
+; 															END |
+; ______________________________________________________________|
+
+
+; _______________________________________________________________
+; 																|
+; 							bg clear							|
 ;																|
 ; generic utility for zeroing nametable rams
 ; a: namtable id ($20 or $28)
@@ -91,8 +156,14 @@ bgSetup:
 		dex
 		bne :-
 	rts
+;															END |
+; ______________________________________________________________|
 
 
+; _______________________________________________________________
+;																|
+;						Write hor/ver stripes					|
+;																|
 ; a: tileID
 ; y: xpos
 bgDrawStripeY:
@@ -117,7 +188,9 @@ bgDrawStripeY:
 	lda #%10010000
 	sta PPUCTRL
 	rts
-
+;																|
+; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __|
+;																|
 ; a: tileID
 ; y: ypos	
 	bgDrawStripeX:
@@ -144,3 +217,5 @@ bgDrawStripeY:
 	cpx #32
 	bne @Draw
 	rts
+; 															END |
+; ______________________________________________________________|

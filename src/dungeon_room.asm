@@ -186,7 +186,6 @@ toggle_Floor := Scratch+5
 
 
 
-
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Finally, walls 
 ;																|	
@@ -367,23 +366,17 @@ table_object_Boxes:
 .byte 00
 .byte 96
 .byte 16
-; ID 2, P.o.E.D.R.
-.byte 00
-.byte 00
-.byte 224
-.byte 8
-; ID 3, Puddle
+; ID 2, Puddle
 .byte 00
 .byte 00
 .byte 80
 .byte 24
-; ID 4, DeadThing
+; ID 3, DeadThing
 
 
 table_object_tileROM:
 .word table_tileROM_Door
 .word table_tileROM_Duerer
-.word table_tileROM_Subtitle
 .word table_tileROM_Puddle
 ; ID 0, doors 
 table_tileROM_Door:
@@ -397,10 +390,7 @@ table_tileROM_Door:
 table_tileROM_Duerer:
 .byte $53,$FD, $53,$FD, $53,$FD, $53,$54, $53,$FD, $53,$54
 .byte $55,$FD, $56,$FD, $55,$FD, $55,$57, $55,$FD, $55,$57, $FF
-; ID 2, Subtitle
-table_tileROM_Subtitle:
-.byte _P,_R,_I,_S,_O,_N,__,_O,_F,__,_E,_T,_E,_R,_N,_A,_L,__,_D,_I,_C,_E,__,_R,_O,_L,_L, $FF
-; ID 3, Puddle
+; ID 2, Puddle
 table_tileROM_Puddle:
 .byte $FD,$FD,$FE,$FE,$FE,$FE,$FE,$FE,$FE,$FD
 .byte $FE,$FE,$FE,$FE,$FE,$FE,$FE,$FE,$FE,$FE
@@ -476,7 +466,6 @@ object_QueueBehavior:
 ; Object behavior
 table_object_Behavior:
 .word object_Behavior_Door
-.word object_Behavior_Duerer
 .word object_Behavior_Duerer
 .word object_Behavior_Puddle
 
@@ -618,13 +607,13 @@ object_Behavior_Puddle:
 
 dungeon_palette: 
 ; bg
-.byte $2D,$00,$0F,$32 ; Floor ceiling score
+.byte $2D,$00,$0F,$20 ; Floor ceiling score
 .byte $2D,$07,$00,$17 ; Doors
 .byte $2D,$00,$00,$00
 .byte $2D,$00,$00,$00
 ; sp
-.byte $2D,$18,$28,$38 ; Fairy
+.byte $2D,$10,$0F,$00 ; Fairy
 .byte $2D,$0F,$06,$38 ; Doggies
 .byte $2D,$00,$00,$00
-.byte $2D,$00,$00,$32
+.byte $2D,$00,$00,$20
 

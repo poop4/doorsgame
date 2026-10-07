@@ -7,8 +7,8 @@ MODE_DUNGEON	= $01
 MODE_DEATH		= $02
 MODE_EXIT		= $03
 
-TITLE_START		= $00
-TITLE_HINTS		= $01
+TITLE_START_A	= $00
+TITLE_START_B	= $01
 
 LEFT =			$00
 TOP =			$01
@@ -71,3 +71,6 @@ _X = $21
 _Y = $22
 _Z = $22
 __ = $FD
+_PERIOD = $5A
+_COPYRIGHT = $59
+_LOCK = $65

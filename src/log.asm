@@ -397,7 +397,9 @@
 ; WHEWWWWWW GOOD JOB
 ; score pips are mostly done!
 ; just gotta do animations now andddd
-; o  fix that bug where a second opened door doesnt show piptiles
+
+; x?  fix that bug where a second opened door doesnt show piptiles
+
 ; they look so good! i cant wait to see the finshed product
 ; ...then after this is a lot of backend programming
 
@@ -412,3 +414,9 @@
 ;
 ; welp just found out my ds lite got run through the wash
 ; not a fun way to end the session......... i'm cross. oh well.
+
+; 10/4
+; i think i wanna make a general text parser today
+; for stuff like the title text, options, game over, etc
+
+; o  (ppu_utility.asm) basic text parser
