@@ -419,4 +419,57 @@
 ; i think i wanna make a general text parser today
 ; for stuff like the title text, options, game over, etc
 
-; o  (ppu_utility.asm) basic text parser
+; x  (ppu_utility.asm) basic text parser
+
+; 10/9
+; wrote that text parser yeah, made title scren yadayada
+; working on items now
+; gotta say writing cell allocation routines is kind of annoying at this point
+; maybe that's just the caffeine, nicotine and lack of sleep talking though
+; items can now '''exist''' in a reasonable sense
+; next up is writing the handler and routing special parameters thru creation pipeline
+; 
+
+; 10/10
+; man what a fucked up day
+; i did get lets seeee
+; X  made create_item and destroy_item
+; x  started work on handler_items
+; x  and retooled the cells logic a bit
+; TODO
+; o  finish handler_items and associated events
+; o  rework all pointer tables and associated code to use lohi pairs
+; well also apparently create item is just fucking broken
+; we'll check it out, later
+; X  fix that
+
+; 10/11
+; got my work cut out for me today
+; gonna try to see what's up with create_item first and go from there
+;
+; ok sweet i figured out what was wrong
+; basically i was:
+; a) never setting my item index (so only item 0 ever got created)
+; b) using 0 as a valid item index despite also being the uninitialized value
+; also adjusted destroy_item so it can be used for 'unallocated items' too
+; 
+; pointer math is clearly a little funky somewhere in cells
+; getting completely incomrehensible garbage
+; well items handler is pretty much all wrapped up in a bow now
+; 
+; THINGS I WANT TO ADD BEFORE THE GAMEDEV MEETING (10/22)
+; fairy graphics and events
+; item functionality
+; inventory & functionality
+; audio
+; game over and title screen
+; some furniture
+; a secret
+
+; 10/14
+; started event code for idle ~20 min
+; then went to gym and got home and talked to chelle for 2 hours
+; anyways i just wanted to say FIX CELLS AND ADD FLICKER next its been
+; delayed for much too long
+; and fix dogs it should take like 1 second
+; while im at it: audio. figure out what you're gonna do and do it

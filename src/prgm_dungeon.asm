@@ -15,6 +15,7 @@
 .include "monsters.inc"
 .include "score.inc"
 .include "rng.inc"
+.include "items.inc"
 
 ; _______________________________________________________________
 ; 																|
@@ -25,6 +26,13 @@ Dungeon_Load:
 ; TEST seeds
 	;lda VALUE
 	;sta Seed
+	
+	lda stage
+	bne :+
+	; Turn on sprites
+	lda #%00010000
+	sta SpritesOn
+:
 
 ; Disable rendering
 	jsr ppu_off
@@ -143,6 +151,7 @@ Dungeon_Frame:
 	beq :+
 	; Check for interactable objects, set cooldown
 	jsr fairy_CheckInteract
+	
 	lda #$10
 	sta ButtonsTimer
 ; Dpad	

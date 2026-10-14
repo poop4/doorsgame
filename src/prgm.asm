@@ -1,5 +1,5 @@
 ;
-; main loop, pretty simple. initializes, then maintains control flow and loops forever
+; main, pretty simple. initializes, then maintains control flow and loops forever
 ;
 .debuginfo +
 .smart
@@ -18,31 +18,31 @@
 
 .segment "ZEROPAGE"
 Scratch:			.res 8
-DarkScratch:		.res 8
 PrgmMode:			.res 1 
 PrgmMode_Diaper:	.res 1
 PrgmModeState:		.res 1
-PrgmFramePtr:		.res 2 ; 
+PrgmFramePtr:		.res 2 
 TmpPtr:				.res 2
 TmpPtr2:			.res 2
 PrgmTimer:			.res 3
 PrgmTimer_4f:		.res 1
-GenericTimer:		.res 1
 ButtonsTimer:		.res 1
-NextRoomTimer:		.res 1 ; number of frames until we transition 
+NextRoomTimer:		.res 1
 NeedScroll:			.res 1
 
+
 ; _______________________________________________________________
-; |																|
-; |						Space and time							|
+; 																|
+; 						Space and time							|
 ;																|
 .segment "CODE"
 main:
-	; 'Initialize' seed
+PrgmLoadPtr := TmpPtr
+
 	lda #1
 	sta Seed
-	; set up to initialize title 
-	lda #MODE_TITLE
+	
+	lda #MODE_DUNGEON
 	sta PrgmMode
 	lda #1
 	sta PrgmMode_Diaper ; set update flag
@@ -55,6 +55,7 @@ mainloop:
 	lda PrgmTimer_4f
 	cmp #$04
 	bne :+
+	
 	lda #$00
 	sta PrgmTimer_4f
 :
@@ -71,33 +72,35 @@ mainloop:
 	bne :-
 	
 	jsr handler_Cells
-	
-; Adorn the score anew?
+
+	; Mode switch? 
 	lda PrgmMode_Diaper
 	beq :+
 	lda #0
 	sta PrgmMode_Diaper
-	; Grab mode from table
-	lda PrgmMode
-	asl
-	tax
-	lda ptr_table_PrgmMode_Load, x
-	sta TmpPtr
-	lda ptr_table_PrgmMode_Load+1, x
-	sta TmpPtr+1
-	; Initialize mode
-	jmp (TmpPtr)
+; Load next program mode
+	ldx PrgmMode
+	lda loptr_table_PrgmMode_Load, x
+	sta PrgmLoadPtr
+	lda hiptr_table_PrgmMode_Load, x
+	sta PrgmLoadPtr+1
+	
+	jmp (PrgmLoadPtr)
 	:
+
+; Frame routine per-mode
 	jmp (PrgmFramePtr)
+; __ __
 
+loptr_table_PrgmMode_Load:
+.lobytes Title_Load
+.lobytes Dungeon_Load
+.lobytes Death_Load
 
-; jump table for game mode
-ptr_table_PrgmMode_Load:
-.addr Title_Load
-.addr Dungeon_Load
-.word Death_Load
-;.word Exit_Load
-
+hiptr_table_PrgmMode_Load:
+.hibytes Title_Load
+.hibytes Dungeon_Load
+.hibytes Death_Load
 ;															END |
 ; ______________________________________________________________|
 

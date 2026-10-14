@@ -10,6 +10,7 @@
 .include "rng.inc"
 .include "ppu_utility.inc"
 .include "score.inc"
+.include "items.inc"
 
 .segment "ZEROPAGE"
 ; local RNG for current room
@@ -71,6 +72,15 @@ toggle_Floor := Scratch+5
 	inx
 	cpx #$10
 	bne @ClearRoomLoop
+
+; Room items
+	ldx #0
+:	
+	jsr destroy_item
+	inx
+	cpx #4
+	bne :-
+	
 ; The old world is destroyed
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Bricks and rocks 
@@ -78,6 +88,10 @@ toggle_Floor := Scratch+5
 ; Transfer global seed to this room
 	lda Seed
 	sta RoomSeed
+	; Clock rng
+	jsr ClockRNG
+	sta Seed
+	
 ; Initialize nt pointers (and toggle), start outer loop
 	lda #$20
 	sta NtHi
@@ -176,16 +190,56 @@ toggle_Floor := Scratch+5
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Seed gen
 ;																|
-; Clock rng and store room seed for random selection processes
-	lda Seed
-	sta RoomSeed
-	jsr ClockRNG
-	sta Seed
-	
+
 ; TODO more room generation procedures
 
 
+	lda Seed
+	jsr ClockRNG
+	sta Seed
+	tax
+	lda Seed
+	jsr ClockRNG
+	sta Seed
+	tay
+	lda #$01
+	jsr create_item
 
+	lda Seed
+	jsr ClockRNG
+	sta Seed
+	tax
+	lda Seed
+	jsr ClockRNG
+	sta Seed
+	tay
+	lda #$01
+	jsr create_item
+
+	lda Seed
+	jsr ClockRNG
+	sta Seed
+	tax
+	lda Seed
+	jsr ClockRNG
+	sta Seed
+	tay
+	lda #$00
+	jsr create_item
+
+	lda Seed
+	jsr ClockRNG
+	sta Seed
+	tax
+	lda Seed
+	jsr ClockRNG
+	sta Seed
+	tay
+	lda #$00
+	jsr create_item
+	
+	jsr handler_items
+	
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| ; Finally, walls 
 ;																|	
@@ -615,5 +669,5 @@ dungeon_palette:
 .byte $2D,$10,$0F,$00 ; Fairy
 .byte $2D,$0F,$06,$38 ; Doggies
 .byte $2D,$00,$00,$00
-.byte $2D,$00,$00,$20
+.byte $2D,$10,$0F,$20 ; Score & lock
 

@@ -370,7 +370,7 @@ table_tileROM_POOCO_Bottom:
 title_palette:
 ; bg
 .byte $0F,$2D,$10,$10
-.byte $0F,$0F,$27,$00
+.byte $0F,$0F,$28,$00
 .byte $0F,$00,$17,$00
 .byte $0F,$00,$00,$00
 ; sp

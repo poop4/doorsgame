@@ -9,3 +9,5 @@
 .global bgSetup
 .global bgDrawStripeY
 .global bgDrawStripeX
+
+CELLS_MAX = $20

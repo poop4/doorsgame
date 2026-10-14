@@ -13,6 +13,7 @@ ca65 src/rng.asm -o src/obj/rng.o
 ca65 src/monsters.asm -o src/obj/monsters.o
 ca65 src/score.asm -o src/obj/score.o
 ca65 src/prgm_death.asm -o src/obj/prgm_death.o
+ca65 src/items.asm -o src/obj/items.o
 
 ld65 -C "nes.cfg" ^
 src/obj/prgm.o ^
@@ -28,6 +29,7 @@ src/obj/rng.o ^
 src/obj/monsters.o ^
 src/obj/score.o ^
 src/obj/prgm_death.o ^
+src/obj/items.o ^
 -o "doors.nes" --dbgfile "doors.dbg"
 
 pause

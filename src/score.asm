@@ -262,9 +262,9 @@ PipCellsPtr := TmpPtr
 ; Set index +
 ; Initialize timer
 	stx PipIndex
-	lda #$30
+	lda #$60
 	sta scorePip_Timers, X
-	lda #$06
+	lda #$05
 	sta scorePip_Momentum, X
 	
 ; Determine tiles to use
@@ -405,7 +405,7 @@ PipCellsPtr := TmpPtr
 ; then twiddle thumbs and finally dealloc on 0
 	ldx PipsIndex
 	lda scorePip_Timers, X
-	cmp #$22
+	cmp #$57
 	bcc @Timer
 	
 	and #%00000001

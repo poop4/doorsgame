@@ -298,6 +298,7 @@ dogs_Behavior_Wait:
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __| Seeing no other course, its prey tempts fate
 ;																|
 dogs_Behavior_Hunt:
+
 ; Setup cells ptr 
 	ldx DogsIndex
 	txa
@@ -308,8 +309,15 @@ dogs_Behavior_Hunt:
 	lda ptr_table_cells_dogs+1, X
 	sta TmpPtr2+1
 
-; Take a peek, doggy	
+; Don't hunt locked doors
 
+; TODO
+; cmp dog xpos with active items_keys xposes
+; if collision == yes skip to @Done
+
+; Animation process
+
+; Start animations
 	ldx DogsIndex
 	lda dogs_AnimStates, X
 	cmp #1

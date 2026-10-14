@@ -72,7 +72,7 @@ DiaperVal := Scratch+0 ;nmtbuffer
 cells_Index:		.res 1
 
 .segment "BSS"
-cells_Ptrs:		.res 16
+cells_Ptrs:		.res 32
 ;																|
 ; __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __|
 ;																|
@@ -96,7 +96,16 @@ CellsPtr := TmpPtr
 	lda cells_Ptrs, X
 	sta CellsPtr
 	lda cells_Ptrs+1, X
+	bne :+
+	
+; Keep loading potential cells until we hit list end
+	inc cells_Index
+	lda cells_Index
+	cmp #$20
 	beq @CellsNoMore
+	
+	jmp @LoadNextCells
+:
 	sta CellsPtr+1
 
 	ldx OAM_Index
